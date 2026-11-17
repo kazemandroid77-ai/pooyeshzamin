@@ -25,6 +25,7 @@ jobs:
         with:
           repository: ModernOutlook/pooyeshzamin
           ref: main
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
           path: source
 
       - name: Set up Node.js 24
@@ -107,6 +108,7 @@ jobs:
         with:
           repository: ModernOutlook/pooyeshzamin
           ref: main
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
           path: source
 
       - name: Set up Node.js 24
