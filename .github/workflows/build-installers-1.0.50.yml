@@ -6,6 +6,7 @@ on:
       - build/v1.0.50-old-signing
     paths:
       - .github/workflows/build-installers-1.0.50.yml
+      - build-trigger.txt
   workflow_dispatch:
 
 permissions:
