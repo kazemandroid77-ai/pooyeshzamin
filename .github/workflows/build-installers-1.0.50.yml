@@ -35,9 +35,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: linux-npm-pooyesh-android-${ runner.os }-${ hashFiles('source/scripts/release/build-android.sh') }
+          key: linux-npm-pooyesh-android-${{runner.os}}-${{hashFiles('source/scripts/release/build-android.sh')}}
           restore-keys: |
-            linux-npm-pooyesh-android-${ runner.os }-
+            linux-npm-pooyesh-android-${{runner.os}}-
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -58,7 +58,7 @@ jobs:
       - name: Restore legacy signing keystore
         shell: bash
         env:
-          KEYSTORE_B64: ${ secrets.APK_KEYSTORE_BASE64 }
+          KEYSTORE_B64: ${{secrets.APK_KEYSTORE_BASE64}}
         run: |
           set -euo pipefail
           test -n "$KEYSTORE_B64" || { echo "Missing repository secret APK_KEYSTORE_BASE64" >&2; exit 1; }
@@ -70,9 +70,9 @@ jobs:
       - name: Build Android APKs with the previous signing identity
         shell: bash
         env:
-          PZ_STORE_PASSWORD: ${ secrets.APK_KEYSTORE_PASSWORD }
-          PZ_KEY_ALIAS: ${ secrets.APK_KEY_ALIAS }
-          PZ_KEY_PASSWORD: ${ secrets.APK_KEY_PASSWORD }
+          PZ_STORE_PASSWORD: ${{secrets.APK_KEYSTORE_PASSWORD}}
+          PZ_KEY_ALIAS: ${{secrets.APK_KEY_ALIAS}}
+          PZ_KEY_PASSWORD: ${{secrets.APK_KEY_PASSWORD}}
         run: |
           set -euo pipefail
           test -n "$PZ_STORE_PASSWORD" || { echo "Missing repository secret APK_KEYSTORE_PASSWORD" >&2; exit 1; }
