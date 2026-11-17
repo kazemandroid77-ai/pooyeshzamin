@@ -1,12 +1,6 @@
-name: Build PooyeshZamin 1.0.50 installers
+name: Build PooyeshZamin 1.0.50 installers (new signing identity)
 
 on:
-  push:
-    branches:
-      - build/v1.0.50-old-signing
-    paths:
-      - .github/workflows/build-installers-1.0.50.yml
-      - build-trigger.txt
   workflow_dispatch:
 
 permissions:
@@ -57,7 +51,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y imagemagick unzip
 
-      - name: Restore legacy signing keystore
+      - name: Restore new release signing keystore
         shell: bash
         env:
           KEYSTORE_B64: ${{secrets.APK_KEYSTORE_BASE64}}
@@ -65,11 +59,11 @@ jobs:
           set -euo pipefail
           test -n "$KEYSTORE_B64" || { echo "Missing repository secret APK_KEYSTORE_BASE64" >&2; exit 1; }
           install -d -m 700 "$RUNNER_TEMP/signing"
-          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/signing/legacy-release.jks"
-          chmod 600 "$RUNNER_TEMP/signing/legacy-release.jks"
-          test -s "$RUNNER_TEMP/signing/legacy-release.jks"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/signing/pooyeshzamin-release.jks"
+          chmod 600 "$RUNNER_TEMP/signing/pooyeshzamin-release.jks"
+          test -s "$RUNNER_TEMP/signing/pooyeshzamin-release.jks"
 
-      - name: Build Android APKs with the previous signing identity
+      - name: Build Android APKs with the new signing identity
         shell: bash
         env:
           PZ_STORE_PASSWORD: ${{secrets.APK_KEYSTORE_PASSWORD}}
@@ -85,12 +79,12 @@ jobs:
           p = Path("source/scripts/release/build-android.sh")
           s = p.read_text()
           new = "EFE4FB2E09A47DD3D08BEBE2F3CA2C261A0D941A241BCD1249B9AB3EAFE4308C"
-          old = "411D43CAFC494ED5E66CC28CF15379B0891B9411B0EAC51F22AAF462CF6678CC"
+          replacement = "86F196E7E3445F064E71A58E3C9260053C1415A4A31B3EFF38448E385E2B5FFE"
           if s.count(new) != 1:
               raise SystemExit("Expected exactly one current signing pin; refusing an unsafe patch.")
-          p.write_text(s.replace(new, old))
+          p.write_text(s.replace(new, replacement))
           PY
-          bash source/scripts/release/build-android.sh "$GITHUB_WORKSPACE/source" "1.0.50" "$GITHUB_WORKSPACE/android-output" "$RUNNER_TEMP/signing/legacy-release.jks"
+          bash source/scripts/release/build-android.sh "$GITHUB_WORKSPACE/source" "1.0.50" "$GITHUB_WORKSPACE/android-output" "$RUNNER_TEMP/signing/pooyeshzamin-release.jks"
 
       - name: Upload Android APKs
         uses: actions/upload-artifact@v4
@@ -188,7 +182,7 @@ jobs:
           - اپلیکیشن مشترکین اندروید
           - نصب‌کننده دسکتاپ ویندوز x64
 
-          APKها با هویت امضای نسخه‌های قبلی ساخته شده‌اند تا ارتقای مستقیم حفظ شود.
+          APKها با هویت امضای جدید ساخته شده‌اند. برای نصب روی دستگاهی که نسخه‌ای با امضای قبلی دارد، ابتدا نسخه قبلی را حذف و سپس این نسخه را نصب کنید. داده‌های همگام‌نشده محلی ممکن است از دست بروند.
           برای بررسی صحت فایل‌ها از SHA256SUMS.txt استفاده کنید.
           EOF
 
