@@ -1,0 +1,1 @@
+Trigger the artifact-only PooyeshZamin 1.0.50 build using the legacy Android signing identity.
