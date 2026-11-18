@@ -4,13 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       source_run_id:
-        description: "Successful build workflow run ID (leave empty only when triggered automatically)"
+        description: "Successful installer build workflow run ID"
         required: true
         type: string
         default: "44191149935"
   workflow_run:
-    workflows:
-      - Build PooyeshZamin 1.0.50 installers (new signing identity)
     types:
       - completed
 
@@ -24,10 +22,17 @@ concurrency:
 
 jobs:
   publish:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == github.repository &&
+        github.event.workflow_run.actor.login == 'kazemandroid77-ai' &&
+        startsWith(github.event.workflow_run.head_branch, 'build/')
+      )
     runs-on: ubuntu-24.04
     steps:
-      - name: Resolve source workflow run
+      - name: Resolve source run and locate its installer bundle
         id: source
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -50,27 +55,57 @@ jobs:
           run_status="$(jq -r '.status' <<< "$run_json")"
           run_conclusion="$(jq -r '.conclusion' <<< "$run_json")"
           run_sha="$(jq -r '.head_sha' <<< "$run_json")"
+          run_branch="$(jq -r '.head_branch' <<< "$run_json")"
 
           [[ "$run_repository" == "$REPOSITORY" ]] || { echo "Source run belongs to another repository." >&2; exit 1; }
           [[ "$run_status" == "completed" && "$run_conclusion" == "success" ]] || {
             echo "Source build must be completed successfully." >&2
             exit 1
           }
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && "$run_branch" != build/* ]]; then
+            echo "Manual publication accepts only build/* workflow branches." >&2
+            exit 1
+          fi
+
+          artifacts_json="$(gh api "repos/$REPOSITORY/actions/runs/$run_id/artifacts?per_page=100")"
+          artifact_name="$(jq -r '
+            [.artifacts[]
+              | select(.expired == false)
+              | select(.name | startswith("PooyeshZamin-"))
+              | select(.name | endswith("-Installers"))]
+            | sort_by(.created_at)
+            | last // {}
+            | .name // ""
+          ' <<< "$artifacts_json")"
+
+          if [[ -z "$artifact_name" ]]; then
+            if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+              echo "No unexpired PooyeshZamin installer bundle was found in run $run_id." >&2
+              exit 1
+            fi
+            echo "No installer bundle in this successful build run; nothing to publish."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=$artifact_name" >> "$GITHUB_OUTPUT"
           echo "head_sha=$run_sha" >> "$GITHUB_OUTPUT"
-          echo "Source run $run_id validated at $run_sha"
+          echo "found=true" >> "$GITHUB_OUTPUT"
+          echo "Selected $artifact_name from successful run $run_id ($run_sha)"
 
-      - name: Download the verified installer bundle
+      - name: Download the installer bundle
+        if: steps.source.outputs.found == 'true'
         uses: actions/download-artifact@v4
         with:
-          name: PooyeshZamin-1.0.50-Installers
+          name: ${{ steps.source.outputs.artifact_name }}
           path: release-assets
           repository: ${{ github.repository }}
           run-id: ${{ steps.source.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Validate release payload and determine version
+        if: steps.source.outputs.found == 'true'
         id: meta
         shell: bash
         run: |
@@ -102,6 +137,7 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub Release to the distribution repository
+        if: steps.source.outputs.found == 'true'
         uses: softprops/action-gh-release@v2
         with:
           repository: ModernOutlook/-
