@@ -1,6 +1,9 @@
 name: Publish Pooyesh Zamin installers
 
 on:
+  push:
+    branches:
+      - publish/v1.0.52
   workflow_dispatch:
     inputs:
       source_run_id:
@@ -37,7 +40,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EVENT_NAME: ${{ github.event_name }}
           EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
-          INPUT_RUN_ID: ${{ inputs.source_run_id }}
+          INPUT_RUN_ID: ${{ inputs.source_run_id || '44613283692' }}
           REPOSITORY: ${{ github.repository }}
         shell: bash
         run: |
