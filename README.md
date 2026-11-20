@@ -1,2 +1,22 @@
-# pooyeshzamin
-Building Pooyesh Zamin Applications. 
+# Pooyesh Zamin installer builder
+
+این مخزن فقط گردش‌کار ساخت و انتشار فایل‌های نصب را نگهداری می‌کند. کد برنامه و رابط کاربری مرجع از مخزن خصوصی `ModernOutlook/pooyeshzamin` و شاخه `main` دریافت می‌شود.
+
+## ساخت نسخه جدید
+
+1. تغییرات رابط کاربری و منطق برنامه را ابتدا در مخزن مرجع ادغام کنید.
+2. در بخش Actions، گردش‌کار **Build PooyeshZamin installers** را اجرا کنید.
+3. نسخه را با قالب `1.0.N` وارد کنید؛ برای مثال `1.0.52` و در نوبت بعد `1.0.53`.
+4. پس از موفقیت ساخت، Artifact با نام `PooyeshZamin-<version>-Installers` شامل سه APK، نصب‌کننده Windows، فایل‌های به‌روزرسانی Electron و SHA256SUMS.txt خواهد بود.
+5. گردش‌کار انتشار، پس از ساخت موفق، نسخه را به‌صورت خودکار منتشر می‌کند و افزایش ترتیبی نسخه را کنترل می‌کند.
+
+رابط کاربری و منابع ثابت درون هر فایل نصب بسته‌بندی می‌شوند. سرور مرکزی برای API داده، احراز هویت، GPS و همگام‌سازی باقی می‌ماند.
+
+## Secrets موردنیاز
+
+- `SOURCE_REPO_TOKEN`: دسترسی خواندن مخزن مرجع خصوصی
+- `APK_KEYSTORE_BASE64`
+- `APK_KEYSTORE_PASSWORD`
+- `APK_KEY_ALIAS`
+- `APK_KEY_PASSWORD`
+- `DISTRIBUTION_TOKEN`: دسترسی انتشار در مخزن مقصد
