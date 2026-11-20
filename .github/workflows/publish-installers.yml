@@ -28,7 +28,7 @@ jobs:
       (
         github.event.workflow_run.conclusion == 'success' &&
         github.event.workflow_run.head_repository.full_name == github.repository &&
-        startsWith(github.event.workflow_run.head_branch, 'build/')
+        (github.event.workflow_run.head_branch == 'main' || startsWith(github.event.workflow_run.head_branch, 'build/'))
       )
     runs-on: ubuntu-24.04
     steps:
@@ -62,7 +62,7 @@ jobs:
             echo "Source build must be completed successfully." >&2
             exit 1
           }
-          if [[ "$EVENT_NAME" == "workflow_dispatch" && "$run_branch" != build/* ]]; then
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && "$run_branch" != "main" && "$run_branch" != build/* ]]; then
             echo "Manual publication accepts only build/* workflow branches." >&2
             exit 1
           fi
