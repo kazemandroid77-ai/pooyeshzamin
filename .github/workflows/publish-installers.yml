@@ -167,7 +167,7 @@ jobs:
             exit 1
           }
 
-          releases_json="$(gh release list --repo "$DESTINATION_REPOSITORY" --limit 1000 --json tagName)"
+          releases_json="$(gh api --paginate --slurp "repos/$DESTINATION_REPOSITORY/releases?per_page=100" | jq 'add | map(select(.draft == false and .prerelease == false) | {tagName: .tag_name, assets: [.assets[].name]})')"
           printf '%s\n' "$releases_json" > /tmp/destination-releases.json
 
           latest_version="$(jq -r '
@@ -178,8 +178,8 @@ jobs:
             | last // ""
           ' <<< "$releases_json")"
 
-          echo "Published destination releases:"
-          jq -r '.[].tagName' <<< "$releases_json" | sort -V
+          echo "Published destination releases and their asset names:"
+          jq -r '.[] | "\(.tagName): \(.assets | join(", "))"' <<< "$releases_json"
           if [[ -n "$latest_version" ]]; then
             echo "Latest published version: $latest_version"
             max_version="$(printf '%s\n%s\n' "$latest_version" "$NEW_VERSION" | sort -V | tail -n 1)"
