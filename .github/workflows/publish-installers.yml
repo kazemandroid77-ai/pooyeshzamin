@@ -9,6 +9,8 @@ on:
         type: string
         default: "44191149935"
   workflow_run:
+    workflows:
+      - "Build PooyeshZamin 1.0.50 installers (new signing identity)"
     types:
       - completed
 
@@ -135,11 +137,23 @@ jobs:
           sha256sum --check SHA256SUMS.txt
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      - name: Validate distribution repository configuration
+        if: steps.source.outputs.found == 'true'
+        env:
+          DISTRIBUTION_REPOSITORY: ${{ vars.DISTRIBUTION_REPOSITORY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$DISTRIBUTION_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || {
+            echo "Set the repository variable DISTRIBUTION_REPOSITORY to the destination in owner/repo format." >&2
+            exit 1
+          }
+
       - name: Publish GitHub Release to the distribution repository
         if: steps.source.outputs.found == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          repository: ModernOutlook/-
+          repository: ${{ vars.DISTRIBUTION_REPOSITORY }}
           token: ${{ secrets.DISTRIBUTION_TOKEN }}
           tag_name: v${{ steps.meta.outputs.version }}
           name: Pooyesh Zamin v${{ steps.meta.outputs.version }}
