@@ -1,0 +1,228 @@
+name: Build PooyeshZamin installers
+
+run-name: Build Pooyesh Zamin ${{ inputs.version }} installers
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (for example 1.0.52, then 1.0.53)"
+        required: true
+        default: "1.0.52"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pooyeshzamin-installers-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Validate release version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^1\.0\.[0-9]+$ ]] || {
+            echo "Version must match 1.0.N (for example 1.0.52)." >&2
+            exit 1
+          }
+
+  android:
+    needs: validate
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@v4
+        with:
+          repository: ModernOutlook/pooyeshzamin
+          ref: main
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          path: source
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Cache npm downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: linux-npm-pooyesh-android-${{ runner.os }}-${{ hashFiles('source/scripts/release/build-android.sh') }}
+          restore-keys: |
+            linux-npm-pooyesh-android-${{ runner.os }}-
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Configure Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -mindepth 2 -maxdepth 3 -type f -name sdkmanager | sort -V | tail -n 1)"
+          test -x "$SDKMANAGER" || { echo "Android sdkmanager not found under $SDK_ROOT" >&2; exit 1; }
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "$SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" --install "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Install Android build utilities
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick unzip
+
+      - name: Restore release signing keystore
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.APK_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_B64" || { echo "Missing APK_KEYSTORE_BASE64 secret." >&2; exit 1; }
+          install -d -m 700 "$RUNNER_TEMP/signing"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/signing/pooyeshzamin-release.jks"
+          chmod 600 "$RUNNER_TEMP/signing/pooyeshzamin-release.jks"
+          test -s "$RUNNER_TEMP/signing/pooyeshzamin-release.jks"
+
+      - name: Build all Android panels
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          PZ_STORE_PASSWORD: ${{ secrets.APK_KEYSTORE_PASSWORD }}
+          PZ_KEY_ALIAS: ${{ secrets.APK_KEY_ALIAS }}
+          PZ_KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in PZ_STORE_PASSWORD PZ_KEY_ALIAS PZ_KEY_PASSWORD; do
+            test -n "${!name}" || { echo "Missing signing secret: $name" >&2; exit 1; }
+          done
+          bash source/scripts/release/build-android.sh "$GITHUB_WORKSPACE/source" "$VERSION" "$GITHUB_WORKSPACE/android-output" "$RUNNER_TEMP/signing/pooyeshzamin-release.jks"
+
+      - name: Upload Android APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-installers
+          path: android-output/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  windows:
+    needs: validate
+    runs-on: windows-latest
+    steps:
+      - name: Checkout canonical source
+        uses: actions/checkout@v4
+        with:
+          repository: ModernOutlook/pooyeshzamin
+          ref: main
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          path: source
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Build self-contained Windows installer
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:VERSION -notmatch '^1\.0\.[0-9]+$') { throw "Invalid release version: $env:VERSION" }
+          $desktop = Join-Path $PWD 'source/desktop'
+          Push-Location $desktop
+          try {
+            npm version $env:VERSION --no-git-tag-version
+            if ($LASTEXITCODE -ne 0) { throw 'npm version failed' }
+            npm install --no-audit --no-fund
+            if ($LASTEXITCODE -ne 0) { throw 'npm install failed' }
+            npm run build:icon
+            if ($LASTEXITCODE -ne 0) { throw 'Icon generation failed' }
+            npm run dist:win
+            if ($LASTEXITCODE -ne 0) { throw 'Windows installer build failed' }
+          }
+          finally {
+            Pop-Location
+          }
+          $out = Join-Path $PWD 'windows-output'
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          Get-ChildItem (Join-Path $desktop 'dist') -File | Copy-Item -Destination $out -Force
+          $installer = Join-Path $out "PooyeshZamin-Admin-Setup-$($env:VERSION).exe"
+          if (-not (Test-Path $installer) -or (Get-Item $installer).Length -le 0) {
+            throw "Expected installer was not produced: $installer"
+          }
+          if (-not (Test-Path "$installer.blockmap") -or -not (Test-Path (Join-Path $out 'latest.yml'))) {
+            throw 'Electron updater metadata (latest.yml or blockmap) is missing.'
+          }
+
+      - name: Upload Windows installer and updater metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: windows-output/*
+          if-no-files-found: error
+          retention-days: 14
+
+  bundle:
+    needs: [android, windows]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download Android APKs
+        uses: actions/download-artifact@v4
+        with:
+          name: android-installers
+          path: bundle
+
+      - name: Download Windows installer and updater metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: bundle
+
+      - name: Validate and checksum all four installers
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          cd bundle
+          for file in "pooyesh-admin-$VERSION.apk" "pooyesh-patrol-$VERSION.apk" "pooyesh-subscriber-$VERSION.apk" "PooyeshZamin-Admin-Setup-$VERSION.exe"; do
+            test -s "$file" || { echo "Missing or empty installer: $file" >&2; exit 1; }
+          done
+          test -s "PooyeshZamin-Admin-Setup-$VERSION.exe.blockmap"
+          test -s latest.yml
+          test "$(find . -maxdepth 1 -type f -name '*.apk' | wc -l)" -eq 3
+          test "$(find . -maxdepth 1 -type f -name '*.exe' | wc -l)" -eq 1
+          grep -Eq "^version: *['\\\"]?$VERSION([ '\\\"]|$)" latest.yml
+          grep -Fq "PooyeshZamin-Admin-Setup-$VERSION.exe" latest.yml
+          sha256sum *.apk *.exe latest.yml *.blockmap > SHA256SUMS.txt
+          cat > RELEASE_NOTES.md <<EOF
+          ## پویش زمین $VERSION
+
+          - APK پنل مدیریت با رابط کاربری بسته‌بندی‌شده
+          - APK پنل گشت با رابط کاربری و سرویس GPS
+          - APK پنل مشترکین با رابط کاربری و منابع محلی
+          - نصب‌کننده Windows x64 با رابط مدیریت داخلی
+
+          رابط کاربری و منابع ثابت داخل فایل‌های نصب قرار دارند. سرور مرکزی برای احراز هویت، تبادل اطلاعات، GPS و همگام‌سازی استفاده می‌شود.
+          برای بررسی صحت فایل‌ها از SHA256SUMS.txt استفاده کنید.
+          EOF
+
+      - name: Upload complete four-installer bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: PooyeshZamin-${{ inputs.version }}-Installers
+          path: bundle/*
+          if-no-files-found: error
+          retention-days: 14
