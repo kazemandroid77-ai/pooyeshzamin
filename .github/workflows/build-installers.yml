@@ -204,7 +204,7 @@ jobs:
           test -s latest.yml
           test "$(find . -maxdepth 1 -type f -name '*.apk' | wc -l)" -eq 3
           test "$(find . -maxdepth 1 -type f -name '*.exe' | wc -l)" -eq 1
-          grep -Eq "^version: *['\\\"]?$VERSION([ '\\\"]|$)" latest.yml
+          grep -Fq "version: $VERSION" latest.yml
           grep -Fq "PooyeshZamin-Admin-Setup-$VERSION.exe" latest.yml
           sha256sum *.apk *.exe latest.yml *.blockmap > SHA256SUMS.txt
           cat > RELEASE_NOTES.md <<EOF
