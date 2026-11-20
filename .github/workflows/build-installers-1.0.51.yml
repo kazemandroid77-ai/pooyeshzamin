@@ -1,4 +1,4 @@
-name: Build PooyeshZamin 1.0.51 installers (new signing identity)
+name: Build PooyeshZamin installers
 
 on:
   push:
