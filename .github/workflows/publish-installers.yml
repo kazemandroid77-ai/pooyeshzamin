@@ -104,7 +104,7 @@ jobs:
           run-id: ${{ steps.source.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Validate release payload and determine version
+      - name: Validate the complete installer bundle and checksums
         if: steps.source.outputs.found == 'true'
         id: meta
         shell: bash
@@ -123,20 +123,77 @@ jobs:
             "pooyesh-patrol-$version.apk" \
             "pooyesh-subscriber-$version.apk" \
             "PooyeshZamin-Admin-Setup-$version.exe" \
+            "PooyeshZamin-Admin-Setup-$version.exe.blockmap" \
             latest.yml SHA256SUMS.txt RELEASE_NOTES.md; do
             test -s "$file" || { echo "Missing or empty release file: $file" >&2; exit 1; }
           done
 
           test "$(find . -maxdepth 1 -type f -name '*.apk' | wc -l)" -eq 3
-          test "$(find . -maxdepth 1 -type f -name '*.blockmap' | wc -l)" -ge 1
+          test "$(find . -maxdepth 1 -type f -name '*.exe' | wc -l)" -eq 1
+          test "$(find . -maxdepth 1 -type f -name '*.blockmap' | wc -l)" -eq 1
+
           grep -Eq "^version: *['\"]?$version([ '\"]|$)" latest.yml || {
             echo "latest.yml version does not match installer version $version." >&2
             exit 1
           }
-          sha256sum --check SHA256SUMS.txt
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+          grep -Fq "PooyeshZamin-Admin-Setup-$version.exe" latest.yml || {
+            echo "latest.yml does not reference the matching Windows installer." >&2
+            exit 1
+          }
 
-      - name: Publish GitHub Release to the distribution repository
+          # The checksum manifest must cover every distributable asset exactly once.
+          find . -maxdepth 1 -type f \
+            ! -name 'SHA256SUMS.txt' ! -name 'RELEASE_NOTES.md' \
+            -printf '%f\n' | sort > /tmp/actual-assets.txt
+          awk '{name=$2; sub(/^\*/, "", name); print name}' SHA256SUMS.txt | sort > /tmp/checksummed-assets.txt
+          diff -u /tmp/actual-assets.txt /tmp/checksummed-assets.txt
+          sha256sum --check SHA256SUMS.txt
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Validated all assets and SHA-256 checksums for v$version"
+
+      - name: Read destination releases and enforce increasing version
+        if: steps.source.outputs.found == 'true'
+        id: destination
+        env:
+          GH_TOKEN: ${{ secrets.DISTRIBUTION_TOKEN }}
+          DESTINATION_REPOSITORY: ModernOutlook/-
+          NEW_VERSION: ${{ steps.meta.outputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ -n "$GH_TOKEN" ]] || {
+            echo "Missing DISTRIBUTION_TOKEN secret with access to ModernOutlook/-." >&2
+            exit 1
+          }
+
+          releases_json="$(gh api --paginate --slurp "repos/$DESTINATION_REPOSITORY/releases?per_page=100" | jq 'add | map(select(.draft == false and .prerelease == false) | {tagName: .tag_name, assets: [.assets[].name]})')"
+          printf '%s\n' "$releases_json" > /tmp/destination-releases.json
+
+          latest_version="$(jq -r '
+            [.[] | .tagName
+              | select(test("^v[0-9]+\.[0-9]+\.[0-9]+$"))
+              | ltrimstr("v")]
+            | sort_by(split(".") | map(tonumber))
+            | last // ""
+          ' <<< "$releases_json")"
+
+          echo "Published destination releases and their asset names:"
+          jq -r '.[] | "\(.tagName): \(.assets | join(", "))"' <<< "$releases_json"
+          if [[ -n "$latest_version" ]]; then
+            echo "Latest published version: $latest_version"
+            max_version="$(printf '%s\n%s\n' "$latest_version" "$NEW_VERSION" | sort -V | tail -n 1)"
+            if [[ "$max_version" != "$NEW_VERSION" || "$latest_version" == "$NEW_VERSION" ]]; then
+              echo "New version $NEW_VERSION must be greater than destination version $latest_version." >&2
+              exit 1
+            fi
+          else
+            echo "No stable semantic-version release exists yet; accepting first release."
+          fi
+
+          echo "latest_version=$latest_version" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the new version as the latest destination release
         if: steps.source.outputs.found == 'true'
         uses: softprops/action-gh-release@v2
         with:
@@ -148,8 +205,8 @@ jobs:
           files: |
             release-assets/*.apk
             release-assets/*.exe
-            release-assets/latest.yml
             release-assets/*.blockmap
+            release-assets/latest.yml
             release-assets/SHA256SUMS.txt
           fail_on_unmatched_files: true
           overwrite_files: true
