@@ -157,13 +157,13 @@ jobs:
         id: destination
         env:
           GH_TOKEN: ${{ secrets.DISTRIBUTION_TOKEN }}
-          DESTINATION_REPOSITORY: ModernOutlook/-
+          DESTINATION_REPOSITORY: kazemandroid77-ai/pooyeshzamin
           NEW_VERSION: ${{ steps.meta.outputs.version }}
         shell: bash
         run: |
           set -euo pipefail
           [[ -n "$GH_TOKEN" ]] || {
-            echo "Missing DISTRIBUTION_TOKEN secret with access to ModernOutlook/-." >&2
+            echo "Missing DISTRIBUTION_TOKEN secret with access to kazemandroid77-ai/pooyeshzamin." >&2
             exit 1
           }
 
@@ -197,7 +197,7 @@ jobs:
         if: steps.source.outputs.found == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          repository: ModernOutlook/-
+          repository: kazemandroid77-ai/pooyeshzamin
           token: ${{ secrets.DISTRIBUTION_TOKEN }}
           tag_name: v${{ steps.meta.outputs.version }}
           name: Pooyesh Zamin v${{ steps.meta.outputs.version }}
