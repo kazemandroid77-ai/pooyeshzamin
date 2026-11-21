@@ -15,7 +15,7 @@ on:
 
 permissions:
   actions: read
-  contents: read
+  contents: write
 
 concurrency:
   group: publish-pooyeshzamin-installers
@@ -156,14 +156,15 @@ jobs:
         if: steps.source.outputs.found == 'true'
         id: destination
         env:
-          GH_TOKEN: ${{ secrets.DISTRIBUTION_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           DESTINATION_REPOSITORY: kazemandroid77-ai/pooyeshzamin
+          CURRENT_REPOSITORY: ${{ github.repository }}
           NEW_VERSION: ${{ steps.meta.outputs.version }}
         shell: bash
         run: |
           set -euo pipefail
-          [[ -n "$GH_TOKEN" ]] || {
-            echo "Missing DISTRIBUTION_TOKEN secret with access to kazemandroid77-ai/pooyeshzamin." >&2
+          [[ "$CURRENT_REPOSITORY" == "$DESTINATION_REPOSITORY" ]] || {
+            echo "Workflow repository ($CURRENT_REPOSITORY) does not match release destination ($DESTINATION_REPOSITORY)." >&2
             exit 1
           }
 
@@ -198,7 +199,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           repository: kazemandroid77-ai/pooyeshzamin
-          token: ${{ secrets.DISTRIBUTION_TOKEN }}
+          token: ${{ github.token }}
           tag_name: v${{ steps.meta.outputs.version }}
           name: Pooyesh Zamin v${{ steps.meta.outputs.version }}
           body_path: release-assets/RELEASE_NOTES.md
