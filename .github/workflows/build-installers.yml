@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (for example 1.0.52, then 1.0.53)"
+        description: "Release version (for example 1.0.60, then 1.0.61)"
         required: true
-        default: "1.0.54"
+        default: "1.0.60"
         type: string
 
 permissions:
