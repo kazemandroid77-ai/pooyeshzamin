@@ -144,6 +144,7 @@ jobs:
           # The checksum manifest must cover every distributable asset exactly once.
           find . -maxdepth 1 -type f \
             ! -name 'SHA256SUMS.txt' ! -name 'RELEASE_NOTES.md' \
+            ! -name 'builder-debug.yml' \
             -printf '%f\n' | sort > /tmp/actual-assets.txt
           awk '{name=$2; sub(/^\*/, "", name); print name}' SHA256SUMS.txt | sort > /tmp/checksummed-assets.txt
           diff -u /tmp/actual-assets.txt /tmp/checksummed-assets.txt
