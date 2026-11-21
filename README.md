@@ -19,4 +19,4 @@
 - `APK_KEYSTORE_PASSWORD`
 - `APK_KEY_ALIAS`
 - `APK_KEY_PASSWORD`
-- `DISTRIBUTION_TOKEN`: دسترسی انتشار در مخزن مقصد
+- انتشار Release با `GITHUB_TOKEN` داخلی همین مخزن انجام می‌شود و به PAT جداگانه `DISTRIBUTION_TOKEN` نیاز ندارد؛ گردش‌کار برای این کار مجوز `Contents: write` دارد.
