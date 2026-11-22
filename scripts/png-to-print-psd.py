@@ -22,6 +22,12 @@ if len(sources) != 55:
     raise SystemExit(f"Expected exactly 55 root PNG files; found {len(sources)}")
 
 manifest = []
+
+
+def opened_mode(path: Path) -> str:
+    with Image.open(path) as source_image:
+        return source_image.mode
+
 for source in sources:
     with Image.open(source) as opened:
         opened.load()
@@ -34,7 +40,9 @@ for source in sources:
         image = image.convert("RGBA" if "A" in image.getbands() else "RGB")
 
     psd = PSDImage.new("RGB", image.size, color=0)
-    layer = PixelLayer.frompil(image, psd, name=source.stem)
+    # PSD legacy layer-name fields use Mac Roman; keep the internal layer label ASCII-safe.
+    # The original Unicode filename is preserved in the PSD filename and manifest.
+    layer = PixelLayer.frompil(image, psd, name="Artwork")
     psd.append(layer)
 
     # Photoshop Resolution Info stores pixels-per-inch as 16.16 fixed point.
@@ -70,7 +78,7 @@ for source in sources:
         "height_px": image.height,
         "dpi_x": 300,
         "dpi_y": 300,
-        "source_mode": Image.open(source).mode,
+        "source_mode": opened_mode(source),
         "psd_sha256": digest,
     })
     print(f"OK {source.name} -> {destination.name} ({image.width}x{image.height}, 300 DPI)")
