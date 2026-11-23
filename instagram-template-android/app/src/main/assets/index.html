@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#32105a"><title>قالب هوشمند پویش زمین</title>
+<style>
+:root{--deep:#32105a;--paper:#fbf9fd;--green:#28745d}*{box-sizing:border-box}body{margin:0;background:#f3eff7;color:#241b2c;font-family:Tahoma,"Segoe UI",sans-serif}
+header{background:linear-gradient(115deg,#281044,#51217b);color:white;padding:20px 16px;text-align:center}h1{font-size:22px;margin:0 0 7px}header p{font-size:12px;margin:0;opacity:.85}
+main{max-width:850px;margin:14px auto;padding:0 12px 25px}.panel{background:white;border:1px solid #e8dfef;border-radius:17px;padding:16px;box-shadow:0 8px 28px #29113d0d}
+label{display:block;font-size:13px;font-weight:bold;margin:12px 0 7px}input,select,button{font:inherit}input[type=file],select{width:100%;padding:11px;border:1px solid #d9cde4;border-radius:10px;background:white;color:#34243e}
+.hint{font-size:11px;color:#766b7d;line-height:1.8;margin-top:6px}.actions{display:flex;gap:9px;margin-top:14px}button{border:0;border-radius:10px;padding:12px 15px;font-weight:bold;flex:1}.primary{background:var(--deep);color:white}.secondary{background:#efe8f5;color:var(--deep)}button:disabled{opacity:.45}
+.preview{margin-top:14px;background:white;border:1px solid #e8dfef;border-radius:17px;padding:14px}.preview h2{font-size:15px;margin:0 0 10px;color:var(--deep)}.stage{min-height:260px;background:#f1edf4;border-radius:12px;padding:12px;display:flex;align-items:center;justify-content:center;overflow:auto}
+canvas{display:block;max-width:100%;max-height:60vh;width:auto;height:auto;box-shadow:0 4px 18px #21132d24}.empty{text-align:center;color:#786b82;font-size:13px;line-height:2;padding:35px 10px}
+#status{font-size:12px;color:#5f5268;line-height:1.8;min-height:22px;margin-top:10px}footer{text-align:center;color:#887c91;font-size:10px;padding:15px}
+</style></head><body>
+<header><h1>قالب هوشمند اینستاگرام پویش زمین</h1><p>هویت بصری ثابت؛ چیدمان خودکار برای هر تصویر</p></header>
+<main><section class="panel">
+<label for="photo">۱. انتخاب تصویر اصلی</label><input id="photo" type="file" accept="image/*">
+<div class="hint">تصویر بدون برش و کشیدگی در قاب قرار می‌گیرد و فایل اصلی تغییر نمی‌کند.</div>
+<label for="format">۲. اندازه خروجی</label><select id="format"><option value="auto">تشخیص خودکار از نسبت تصویر</option><option value="portrait">عمودی (۴:۵)</option><option value="square">مربعی (۱:۱)</option><option value="landscape">افقی (۱.۹۱:۱)</option></select>
+<label for="margin">۳. حاشیه تصویر</label><select id="margin"><option value="compact">کم – فضای تصویر بیشتر</option><option value="balanced" selected>متعادل</option><option value="airy">باز و خلوت</option></select>
+<div class="actions"><button class="primary" id="download" disabled>ذخیره PNG در گوشی</button><button class="secondary" id="reset">شروع مجدد</button></div>
+<div id="status" aria-live="polite">برای شروع، تصویر موردنظر را انتخاب کنید.</div></section>
+<section class="preview"><h2>پیش‌نمایش قالب</h2><div class="stage"><div class="empty" id="empty">پیش‌نمایش خروجی اینجا نمایش داده می‌شود.</div><canvas id="canvas" hidden></canvas></div></section>
+</main><footer>پویش زمین · پردازش کاملاً آفلاین · نسخه ۱.۰.۰</footer>
+<script>
+const $=id=>document.getElementById(id),photo=$('photo'),format=$('format'),margin=$('margin'),canvas=$('canvas'),ctx=canvas.getContext('2d'),status=$('status'),download=$('download'),empty=$('empty');
+let source=null,sourceName='pooyesh-zamin-post';const logo=new Image();
+try{if(window.Android&&Android.getLogoBase64()){logo.src='data:image/png;base64,'+Android.getLogoBase64()}}catch(e){}
+function round(c,x,y,w,h,r,color){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();c.fillStyle=color;c.fill()}
+function render(){if(!source||!logo.complete||!logo.naturalWidth)return;const ratio=source.width/source.height;let W,H;
+if(format.value==='auto'){if(ratio<.82){W=1080;H=1350}else if(ratio>1.25){W=1080;H=608}else{W=1080;H=1080}}
+else if(format.value==='portrait'){W=1080;H=1350}else if(format.value==='square'){W=1080;H=1080}else{W=1080;H=608}
+canvas.width=W;canvas.height=H;ctx.fillStyle='#32105a';ctx.fillRect(0,0,W,H);
+ctx.globalAlpha=.18;ctx.fillStyle='#28745d';ctx.beginPath();ctx.arc(W+35,55,Math.min(W,H)*.32,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+const top=32,bottom=H-112,outer=30;round(ctx,outer,top,W-outer*2,bottom-top,26,'#fbf9fd');
+const pad=margin.value==='compact'?18:margin.value==='airy'?55:34,bx=outer+pad,by=top+pad,bw=W-2*(outer+pad),bh=bottom-top-2*pad;
+const scale=Math.min(bw/source.width,bh/source.height),iw=source.width*scale,ih=source.height*scale,ix=bx+(bw-iw)/2,iy=by+(bh-ih)/2;
+ctx.save();round(ctx,bx,by,bw,bh,14,'#eeeaf1');ctx.clip();ctx.drawImage(source,ix,iy,iw,ih);ctx.restore();
+ctx.fillStyle='#32105a';ctx.fillRect(0,H-112,W,112);
+const logoW=88,logoH=logoW*logo.naturalHeight/logo.naturalWidth;ctx.drawImage(logo,28,H-logoH-8,logoW,logoH);
+ctx.fillStyle='#6bb89b';ctx.fillRect(W-46,H-88,5,64);
+canvas.hidden=false;empty.hidden=true;download.disabled=false}
+photo.addEventListener('change',e=>{const file=e.target.files&&e.target.files[0];if(!file)return;const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{source=img;sourceName=(file.name||'pooyesh-zamin').replace(/\.[^.]+$/,'');render();status.textContent='تصویر آماده است · '+img.naturalWidth+' × '+img.naturalHeight+' پیکسل · بدون برش';URL.revokeObjectURL(url)};img.onerror=()=>{status.textContent='خواندن تصویر ناموفق بود.';URL.revokeObjectURL(url)};img.src=url});
+[format,margin].forEach(el=>el.addEventListener('change',render));
+download.addEventListener('click',()=>{if(!source)return;canvas.toBlob(blob=>{if(!blob)return;const filename=sourceName+'-pooyesh-zamin.png';
+try{if(window.Android){const reader=new FileReader();reader.onload=()=>{const data=String(reader.result).split(',')[1];Android.savePng(data,filename);status.textContent='درخواست ذخیره تصویر ارسال شد.'};reader.readAsDataURL(blob);return}}catch(e){}
+const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);status.textContent='فایل PNG آماده شد.'},'image/png')});
+$('reset').addEventListener('click',()=>{photo.value='';source=null;canvas.hidden=true;empty.hidden=false;download.disabled=true;status.textContent='برای شروع، تصویر موردنظر را انتخاب کنید.'});
+logo.onload=()=>{if(source)render()};
+</script></body></html>
