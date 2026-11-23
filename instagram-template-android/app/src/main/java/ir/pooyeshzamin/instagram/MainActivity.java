@@ -3,7 +3,6 @@ package ir.pooyeshzamin.instagram;
 import android.app.Activity;
 import android.content.ContentValues;
 import android.content.Intent;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -19,7 +18,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.util.Base64;
 
 public class MainActivity extends Activity {
     private static final int PICK_IMAGE = 1001;
@@ -64,9 +62,7 @@ public class MainActivity extends Activity {
 
         @JavascriptInterface public void savePng(String base64, String filename) {
             try {
-                byte[] bytes;
-                if (Build.VERSION.SDK_INT >= 26) bytes = Base64.getDecoder().decode(base64);
-                else bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
+                byte[] bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
                 String safeName = filename.replaceAll("[^A-Za-z0-9._-]", "_");
                 if (!safeName.toLowerCase().endsWith(".png")) safeName += ".png";
                 if (Build.VERSION.SDK_INT >= 29) {
