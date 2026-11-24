@@ -102,7 +102,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --input-type=module <<'NODE' | tee -a ../live-ota-validation.log
+          node --input-type=module 2>&1 <<'NODE' | tee -a ../live-ota-validation.log
           import { readFileSync } from "node:fs";
           import { webcrypto } from "node:crypto";
 
@@ -111,7 +111,7 @@ jobs:
           const keyEnd = source.indexOf("};", keyStart);
           if (keyStart < 0 || keyEnd < 0) throw new Error("APK-pinned OTA public key block was not found");
           const keyBlock = source.slice(keyStart, keyEnd);
-          const value = name => keyBlock.match(new RegExp("\\\\b" + name + ': "([^"]+)"'))?.[1];
+          const value = name => keyBlock.match(new RegExp(name + ': "([^"]+)"'))?.[1];
           const publicJwk = {
             kty: value("kty"), crv: value("crv"), x: value("x"), y: value("y"),
             ext: true, key_ops: ["verify"]
