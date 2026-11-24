@@ -142,7 +142,7 @@ jobs:
             if (typeof envelope.payload !== "string" || typeof envelope.signature !== "string") {
               throw new Error("Malformed OTA signature envelope for " + app);
             }
-            const etag = (response.headers.get("etag") || "").replace(/^W\\//i, "").replaceAll('"', "").toLowerCase();
+            const etag = (response.headers.get("etag") || "").replace(/^W\//i, "").replaceAll('"', "").toLowerCase();
             const computedEtag = await digestHex(envelope.payload);
             if (!etag || etag !== computedEtag) {
               throw new Error("Live OTA ETag/payload digest mismatch for " + app +
