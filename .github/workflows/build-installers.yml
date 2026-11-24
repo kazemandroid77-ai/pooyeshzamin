@@ -11,7 +11,7 @@ on:
         default: "1.7.0"
         type: string
       source_sha:
-        description: "Exact 40-character commit SHA from ModernOutlook/pooyeshzamin"
+        description: "Exact merged commit SHA reachable from ModernOutlook/pooyeshzamin main"
         required: true
         type: string
 
@@ -45,6 +45,7 @@ jobs:
           ref: ${{ inputs.source_sha }}
           token: ${{ secrets.SOURCE_REPO_TOKEN }}
           path: source
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -61,6 +62,11 @@ jobs:
           ACTUAL_SHA="$(git -C source rev-parse HEAD)"
           [[ "$ACTUAL_SHA" == "$SOURCE_SHA" ]] || {
             echo "Canonical source checkout SHA mismatch: expected $SOURCE_SHA, got $ACTUAL_SHA" >&2
+            exit 1
+          }
+          git -C source fetch origin main --no-tags
+          git -C source merge-base --is-ancestor "$SOURCE_SHA" FETCH_HEAD || {
+            echo "source_sha is not reachable from ModernOutlook/pooyeshzamin main; only merged source commits may be built." >&2
             exit 1
           }
           VERSION_CODE="$(python source/scripts/release/version-code.py "$VERSION")"
@@ -95,7 +101,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: linux-npm-pooyesh-android-${{ runner.os }}-${{ hashFiles('source/scripts/release/build-android.sh') }}
+          key: linux-npm-pooyesh-android-${{ runner.os }}-${{ hashFiles('source/scripts/release/build-android.sh', 'source/scripts/release/version-code.py') }}
           restore-keys: |
             linux-npm-pooyesh-android-${{ runner.os }}-
 
