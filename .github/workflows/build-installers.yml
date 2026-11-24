@@ -92,6 +92,11 @@ jobs:
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Set up Node.js 24
         uses: actions/setup-node@v4
         with:
