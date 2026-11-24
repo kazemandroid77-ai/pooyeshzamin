@@ -143,8 +143,10 @@ jobs:
               throw new Error("Malformed OTA signature envelope for " + app);
             }
             const etag = (response.headers.get("etag") || "").replaceAll('"', "").toLowerCase();
-            if (!etag || etag !== await digestHex(envelope.payload)) {
-              throw new Error("Live OTA ETag/payload digest mismatch for " + app);
+            const computedEtag = await digestHex(envelope.payload);
+            if (!etag || etag !== computedEtag) {
+              throw new Error("Live OTA ETag/payload digest mismatch for " + app +
+                ": header=" + etag + " computed=" + computedEtag);
             }
             const payloadBytes = new TextEncoder().encode(envelope.payload);
             const signature = Buffer.from(envelope.signature, "base64url");
