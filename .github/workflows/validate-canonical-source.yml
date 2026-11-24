@@ -107,7 +107,11 @@ jobs:
           import { webcrypto } from "node:crypto";
 
           const source = readFileSync("apps/shared/android-ota.js", "utf8");
-          const value = name => source.match(new RegExp(name + ': "([^"]+)"'))?.[1];
+          const keyStart = source.indexOf("const PUBLIC_KEY = ");
+          const keyEnd = source.indexOf("};", keyStart);
+          if (keyStart < 0 || keyEnd < 0) throw new Error("APK-pinned OTA public key block was not found");
+          const keyBlock = source.slice(keyStart, keyEnd);
+          const value = name => keyBlock.match(new RegExp("\\\\b" + name + ': "([^"]+)"'))?.[1];
           const publicJwk = {
             kty: value("kty"), crv: value("crv"), x: value("x"), y: value("y"),
             ext: true, key_ops: ["verify"]
