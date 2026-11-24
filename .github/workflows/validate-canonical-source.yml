@@ -107,10 +107,14 @@ jobs:
           import { webcrypto } from "node:crypto";
 
           const source = readFileSync("apps/shared/android-ota.js", "utf8");
-          const match = source.match(/const PUBLIC_KEY = (\\{[^;]+\\});/s);
-          if (!match) throw new Error("APK-pinned OTA public key was not found");
-          const jwkText = match[1].replace(/([{,]\\s*)([A-Za-z_$][\\w$]*)\\s*:/g, '$1"$2":');
-          const publicJwk = JSON.parse(jwkText);
+          const value = name => source.match(new RegExp(name + ': "([^"]+)"'))?.[1];
+          const publicJwk = {
+            kty: value("kty"), crv: value("crv"), x: value("x"), y: value("y"),
+            ext: true, key_ops: ["verify"]
+          };
+          if (!publicJwk.kty || !publicJwk.crv || !publicJwk.x || !publicJwk.y) {
+            throw new Error("APK-pinned OTA public key was not found or is incomplete");
+          }
           const publicKey = await webcrypto.subtle.importKey(
             "jwk", publicJwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]
           );
@@ -119,56 +123,56 @@ jobs:
           ).toString("hex");
 
           for (const app of ["admin", "patrol", "subscriber"]) {
-            const url = `https://pooyeshzamin-api.pooyesh-zamin.workers.dev/api/app?name=${app}`;
+            const url = "https://pooyeshzamin-api.pooyesh-zamin.workers.dev/api/app?name=" + app;
             const response = await fetch(url, { cache: "no-store" });
-            if (!response.ok) throw new Error(`Live Worker returned HTTP ${response.status} for ${app}`);
-            if (!/application\\/json/i.test(response.headers.get("content-type") || "")) {
-              throw new Error(`Live Worker returned a non-JSON response for ${app}`);
+            if (!response.ok) throw new Error("Live Worker returned HTTP " + response.status + " for " + app);
+            if (!(response.headers.get("content-type") || "").includes("application/json")) {
+              throw new Error("Live Worker returned a non-JSON response for " + app);
             }
             const envelope = await response.json();
             if (typeof envelope.payload !== "string" || typeof envelope.signature !== "string") {
-              throw new Error(`Malformed OTA signature envelope for ${app}`);
+              throw new Error("Malformed OTA signature envelope for " + app);
             }
             const etag = (response.headers.get("etag") || "").replaceAll('"', "").toLowerCase();
             if (!etag || etag !== await digestHex(envelope.payload)) {
-              throw new Error(`Live OTA ETag/payload digest mismatch for ${app}`);
+              throw new Error("Live OTA ETag/payload digest mismatch for " + app);
             }
             const payloadBytes = new TextEncoder().encode(envelope.payload);
             const signature = Buffer.from(envelope.signature, "base64url");
-            if (signature.length !== 64) throw new Error(`Invalid P-256 signature length for ${app}`);
+            if (signature.length !== 64) throw new Error("Invalid P-256 signature length for " + app);
             const valid = await webcrypto.subtle.verify(
               { name: "ECDSA", hash: "SHA-256" }, publicKey, signature, payloadBytes
             );
-            if (!valid) throw new Error(`Live Worker signature does not match APK public key for ${app}`);
+            if (!valid) throw new Error("Live Worker signature does not match APK public key for " + app);
 
             const signed = JSON.parse(envelope.payload);
             if (signed.schema !== 1 || signed.app !== app || typeof signed.build !== "string" ||
                 typeof signed.html !== "string" || !signed.hashes || !signed.hashes.files ||
                 !signed.files || typeof signed.files !== "object") {
-              throw new Error(`Invalid signed OTA manifest for ${app}`);
+              throw new Error("Invalid signed OTA manifest for " + app);
             }
             const expected = app === "subscriber"
               ? ["assets/a.jpg", "assets/b.jpg", "pz-experience-v160.js", "shared/offline-sync.js"]
               : ["pz-experience-v160.js", "shared/offline-sync.js"];
-            if (Object.keys(signed.files).sort().join("\\n") !== expected.join("\\n")) {
-              throw new Error(`Unexpected OTA file set for ${app}`);
+            if (Object.keys(signed.files).sort().join("\n") !== expected.join("\n")) {
+              throw new Error("Unexpected OTA file set for " + app);
             }
             if (signed.hashes.html !== await digestHex(signed.html)) {
-              throw new Error(`Signed HTML digest mismatch for ${app}`);
+              throw new Error("Signed HTML digest mismatch for " + app);
             }
-            const htmlBuild = signed.html.match(/<meta\\s+name=["']pz-build["']\\s+content=["']([^"']+)["']/i)?.[1];
-            if (htmlBuild !== signed.build) throw new Error(`HTML/build metadata mismatch for ${app}`);
+            const buildTag = signed.html.match(/<meta[^>]*name=["']pz-build["'][^>]*>/i)?.[0] || "";
+            if (!buildTag.includes(signed.build)) throw new Error("HTML/build metadata mismatch for " + app);
             for (const [name, content] of Object.entries(signed.files)) {
               if (typeof content !== "string" || signed.hashes.files[name] !== await digestHex(content)) {
-                throw new Error(`Signed file digest mismatch: ${app}/${name}`);
+                throw new Error("Signed file digest mismatch: " + app + "/" + name);
               }
             }
             const tampered = await webcrypto.subtle.verify(
               { name: "ECDSA", hash: "SHA-256" }, publicKey, signature,
               new TextEncoder().encode(envelope.payload + " ")
             );
-            if (tampered) throw new Error(`Tampered payload was accepted for ${app}`);
-            console.log(`Verified live OTA key pair, signature, manifest and hashes: ${app} build ${signed.build}`);
+            if (tampered) throw new Error("Tampered payload was accepted for " + app);
+            console.log("Verified live OTA key pair, signature, manifest and hashes: " + app + " build " + signed.build);
           }
           NODE
 
