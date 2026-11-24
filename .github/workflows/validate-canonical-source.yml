@@ -22,10 +22,21 @@ jobs:
       - name: Check out build repository
         uses: actions/checkout@v4
 
+      - name: Check source repository access
+        env:
+          SOURCE_REPO_TOKEN: ${{ secrets.SOURCE_REPO_TOKEN }}
+        shell: bash
+        run: |
+          if [[ -z "$SOURCE_REPO_TOKEN" ]]; then
+            echo "Missing SOURCE_REPO_TOKEN secret in the build repository. Add a fine-grained token with Contents: Read access to ModernOutlook/pooyeshzamin." >&2
+            exit 1
+          fi
+
       - name: Check out canonical application source
         uses: actions/checkout@v4
         with:
           repository: ModernOutlook/pooyeshzamin
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
           ref: ${{ inputs.source_ref || 'feat/android-web-ota-standalone-apks' }}
           path: source
           fetch-depth: 0
