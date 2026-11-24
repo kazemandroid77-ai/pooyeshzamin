@@ -111,7 +111,9 @@ jobs:
           const keyEnd = source.indexOf("};", keyStart);
           if (keyStart < 0 || keyEnd < 0) throw new Error("APK-pinned OTA public key block was not found");
           const keyBlock = source.slice(keyStart, keyEnd);
-          const value = name => keyBlock.match(new RegExp(name + ': "([^"]+)"'))?.[1];
+          const fields = keyBlock.slice(keyBlock.indexOf("{") + 1).split(",");
+          const value = name => fields.find(field => field.trim().startsWith(name + ":"))
+            ?.split(":").slice(1).join(":").trim().replace(/^"|"$/g, "");
           const publicJwk = {
             kty: value("kty"), crv: value("crv"), x: value("x"), y: value("y"),
             ext: true, key_ops: ["verify"]
