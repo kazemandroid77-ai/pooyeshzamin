@@ -129,7 +129,7 @@ jobs:
           ).toString("hex");
 
           for (const app of ["admin", "patrol", "subscriber"]) {
-            const url = "https://pooyeshzamin-api.pooyesh-zamin.workers.dev/api/app?name=" + app;
+            const url = "https://pooyeshzamin-api.pooyesh-zamin.workers.dev/api/android/ota?name=" + app;
             const response = await fetch(url, { cache: "no-store" });
             if (!response.ok) throw new Error("Live Worker returned HTTP " + response.status + " for " + app);
             if (!(response.headers.get("content-type") || "").includes("application/json")) {
