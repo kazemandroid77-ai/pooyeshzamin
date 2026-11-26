@@ -26,6 +26,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - name: Check out canonical private source
         uses: actions/checkout@v4
