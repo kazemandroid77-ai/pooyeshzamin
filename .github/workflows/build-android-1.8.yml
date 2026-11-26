@@ -213,8 +213,8 @@ jobs:
             unzip -p "$apk" assets/public/shared/android-update-manager.js > "$RUNNER_TEMP/$app-update-manager.js"
             grep -Fq "checkAll" "$RUNNER_TEMP/$app-update-manager.js"
             grep -Fq "/api/releases/latest" "$RUNNER_TEMP/$app-update-manager.js"
-            grep -Fq "name=\\"pz-app-version\\"" <(unzip -p "$apk" assets/public/index.html)
-            grep -Fq "name=\\"pz-version-code\\"" <(unzip -p "$apk" assets/public/index.html)
+            grep -Fq 'name="pz-app-version"' <(unzip -p "$apk" assets/public/index.html) || { echo "$app APK is missing pz-app-version HTML metadata" >&2; exit 1; }
+            grep -Fq 'name="pz-version-code"' <(unzip -p "$apk" assets/public/index.html) || { echo "$app APK is missing pz-version-code HTML metadata" >&2; exit 1; }
             grep -Fq pickPhoto "$RUNNER_TEMP/$app-permissions-bridge.js"
             grep -Fq requestNotifications "$RUNNER_TEMP/$app-permissions-bridge.js"
             echo "PASS: $app metadata, release signature and permission declarations."
