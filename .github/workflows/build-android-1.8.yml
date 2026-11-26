@@ -12,6 +12,7 @@ on:
       source_sha:
         description: "Exact merged commit SHA from ModernOutlook/pooyeshzamin main"
         required: true
+        default: "bf5b0be86663f786f327cf26c5de090c0f5bf4c3"
         type: string
 
 permissions:
@@ -130,6 +131,7 @@ jobs:
           node --check scripts/android-location-bridge.js
           node --check scripts/android/pz-experience-v160.js
           node --check apps/shared/android-ota.js
+          node --check apps/shared/android-update-manager.js
           echo "version_code=$VERSION_CODE" >> "$GITHUB_ENV"
 
       - name: Restore release signing keystore
@@ -208,6 +210,11 @@ jobs:
 
             unzip -p "$apk" assets/public/android-location-bridge.js > "$RUNNER_TEMP/$app-permissions-bridge.js"
             grep -Fq PZAndroidPermissions "$RUNNER_TEMP/$app-permissions-bridge.js"
+            unzip -p "$apk" assets/public/shared/android-update-manager.js > "$RUNNER_TEMP/$app-update-manager.js"
+            grep -Fq "checkAll" "$RUNNER_TEMP/$app-update-manager.js"
+            grep -Fq "/api/releases/latest" "$RUNNER_TEMP/$app-update-manager.js"
+            grep -Fq "name=\\"pz-app-version\\"" <(unzip -p "$apk" assets/public/index.html)
+            grep -Fq "name=\\"pz-version-code\\"" <(unzip -p "$apk" assets/public/index.html)
             grep -Fq pickPhoto "$RUNNER_TEMP/$app-permissions-bridge.js"
             grep -Fq requestNotifications "$RUNNER_TEMP/$app-permissions-bridge.js"
             echo "PASS: $app metadata, release signature and permission declarations."
