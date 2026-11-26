@@ -1,90 +1,42 @@
-name: Validate canonical source (hosted runner)
-
-run-name: Validate ModernOutlook/pooyeshzamin ${{ inputs.source_ref || 'PR #71 pinned revision' }}
+name: Hosted source validation
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
       - ".github/workflows/hosted-source-validation.yml"
   workflow_dispatch:
-    inputs:
-      source_ref:
-        description: "Source branch, tag, or commit in ModernOutlook/pooyeshzamin"
-        required: true
-        default: "fix/reliable-sync-runtime-independence-squashed"
-        type: string
-      source_sha:
-        description: "Optional exact 40-character commit SHA; overrides source_ref"
-        required: false
-        type: string
 
 permissions:
   contents: read
-
-concurrency:
-  group: hosted-source-validation-${{ github.event.inputs.source_sha || github.event.inputs.source_ref || 'pr71' }}
-  cancel-in-progress: false
 
 jobs:
   validate:
     runs-on: ubuntu-24.04
     steps:
-      - name: Validate source access token
-        shell: bash
-        env:
-          SOURCE_REPO_TOKEN: ${{ secrets.SOURCE_REPO_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [[ -z "$SOURCE_REPO_TOKEN" ]]; then
-            echo "SOURCE_REPO_TOKEN is missing in kazemandroid77-ai/pooyeshzamin." >&2
-            echo "Configure a fine-grained token with Contents: Read access to ModernOutlook/pooyeshzamin." >&2
-            exit 1
-          fi
-
       - name: Check out canonical private source
         uses: actions/checkout@v4
         with:
           repository: ModernOutlook/pooyeshzamin
           token: ${{ secrets.SOURCE_REPO_TOKEN }}
-          ref: ${{ inputs.source_sha || inputs.source_ref || '24b75e95435dfa252d0d8767235a73cfb6787a3e' }}
+          ref: 24b75e95435dfa252d0d8767235a73cfb6787a3e
           path: source
           fetch-depth: 0
 
-      - name: Verify and record source revision
-        id: source
+      - name: Verify source revision and token access
         shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          REQUESTED_SHA: ${{ inputs.source_sha }}
-          REQUESTED_REF: ${{ inputs.source_ref }}
         run: |
           set -euo pipefail
           actual="$(git -C source rev-parse HEAD)"
-          if [[ "$EVENT_NAME" == "push" ]]; then
-            expected="24b75e95435dfa252d0d8767235a73cfb6787a3e"
-            [[ "$actual" == "$expected" ]] || {
-              echo "Unexpected source revision: expected $expected, got $actual" >&2
-              exit 1
-            }
-          elif [[ -n "$REQUESTED_SHA" ]]; then
-            [[ "$REQUESTED_SHA" =~ ^[0-9a-f]{40}$ ]] || {
-              echo "source_sha must be a 40-character commit SHA." >&2
-              exit 1
-            }
-            [[ "$actual" == "$REQUESTED_SHA" ]] || {
-              echo "Checked-out source SHA does not match requested source_sha." >&2
-              exit 1
-            }
-          fi
+          expected="24b75e95435dfa252d0d8767235a73cfb6787a3e"
+          [[ "$actual" == "$expected" ]]
           {
             echo "source_repository=ModernOutlook/pooyeshzamin"
-            echo "source_ref=${REQUESTED_REF:-pinned-commit}"
             echo "source_sha=$actual"
             echo "host_repository=kazemandroid77-ai/pooyeshzamin"
-            echo "host_run_id=${GITHUB_RUN_ID}"
+            echo "host_run_id=$GITHUB_RUN_ID"
           } | tee source-revision.txt
-          echo "sha=$actual" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node.js 24
         uses: actions/setup-node@v4
@@ -98,17 +50,11 @@ jobs:
 
       - name: Run complete Node regression suite
         working-directory: source
-        shell: bash
-        run: |
-          set -o pipefail
-          npm test 2>&1 | tee ../npm-test.log
+        run: npm test
 
       - name: Run application, OTA and release invariant checks
         working-directory: source
-        shell: bash
-        run: |
-          set -o pipefail
-          node scripts/validate-apps.mjs 2>&1 | tee ../validate-apps.log
+        run: node scripts/validate-apps.mjs
 
       - name: Check backend and D1 module syntax
         working-directory: source
@@ -130,10 +76,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pr71-source-validation-${{ steps.source.outputs.sha || 'checkout-failed' }}
-          path: |
-            source-revision.txt
-            npm-test.log
-            validate-apps.log
+          name: pr71-source-validation
+          path: source-revision.txt
           if-no-files-found: warn
           retention-days: 30
