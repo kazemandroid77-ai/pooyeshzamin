@@ -6,7 +6,7 @@ run-name: Build Pooyesh Zamin ${{ inputs.version || '1.8.4' }} installers
 on:
   push:
     branches:
-      - build/manual-1.8.4-04e941a
+      - main
     paths:
       - .github/workflows/build-installers.yml
   workflow_dispatch:
