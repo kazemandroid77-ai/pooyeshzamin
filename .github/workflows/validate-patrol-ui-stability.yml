@@ -66,7 +66,7 @@ jobs:
             throw new Error('Single-flight patrol mission polling guard is missing');
           }
           const timerStart = html.indexOf('patrolMissionTimer=setInterval');
-          const timerEnd = html.indexOf('\\n};', timerStart);
+          const timerEnd = html.indexOf('\n};', timerStart);
           const timer = timerStart >= 0 && timerEnd > timerStart ? html.slice(timerStart, timerEnd) : '';
           if (!timer.includes('render(true)') || timer.includes('.then(render)')) {
             throw new Error('Mission polling must preserve the current UI and never force a full render');
