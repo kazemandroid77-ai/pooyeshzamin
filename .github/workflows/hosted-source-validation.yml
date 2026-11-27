@@ -33,7 +33,7 @@ jobs:
         with:
           repository: ModernOutlook/pooyeshzamin
           token: ${{ secrets.SOURCE_REPO_TOKEN }}
-          ref: ${{ inputs.source_sha || inputs.source_ref || (github.event_name == 'push' && github.ref_name != 'main' && github.ref_name) || 'main' }}
+          ref: ${{ inputs.source_sha || inputs.source_ref || 'feat/insight-novin-html-guide-migration' }}
           path: source
           fetch-depth: 0
 
@@ -42,7 +42,7 @@ jobs:
         shell: bash
         env:
           REQUESTED_SHA: ${{ inputs.source_sha }}
-          REQUESTED_REF: ${{ inputs.source_ref || (github.event_name == 'push' && github.ref_name) || 'main' }}
+          REQUESTED_REF: ${{ inputs.source_ref || 'feat/insight-novin-html-guide-migration' }}
         run: |
           set -euo pipefail
           actual="$(git -C source rev-parse HEAD)"
