@@ -10,7 +10,7 @@ on:
       source_ref:
         description: "Branch, tag, or commit in ModernOutlook/pooyeshzamin"
         required: false
-        default: "fix/patrol-ui-stability-and-literal-newline"
+        default: "main"
         type: string
 
 permissions:
@@ -26,7 +26,7 @@ jobs:
         with:
           repository: ModernOutlook/pooyeshzamin
           token: ${{ secrets.SOURCE_REPO_TOKEN }}
-          ref: ${{ inputs.source_ref || 'fix/patrol-ui-stability-and-literal-newline' }}
+          ref: ${{ inputs.source_ref || 'main' }}
           path: source
           fetch-depth: 0
 
@@ -62,5 +62,17 @@ jobs:
           if (!html.includes('view.innerHTML!==nextView')) {
             throw new Error('No-op view render guard is missing');
           }
-          console.log('Patrol stable-render and stray-text guards passed.');
+          if (!html.includes('patrolMissionRefreshInFlight')) {
+            throw new Error('Single-flight patrol mission polling guard is missing');
+          }
+          const timerStart = html.indexOf('patrolMissionTimer=setInterval');
+          const timerEnd = html.indexOf('\\n};', timerStart);
+          const timer = timerStart >= 0 && timerEnd > timerStart ? html.slice(timerStart, timerEnd) : '';
+          if (!timer.includes('render(true)') || timer.includes('.then(render)')) {
+            throw new Error('Mission polling must preserve the current UI and never force a full render');
+          }
+          if (!timer.includes('document.activeElement')) {
+            throw new Error('Mission polling must pause while a user is editing a control');
+          }
+          console.log('Patrol stable-render, single-flight polling and stray-text guards passed.');
           NODE
