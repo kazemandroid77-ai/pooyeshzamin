@@ -74,7 +74,7 @@ jobs:
           if (!timer.includes('document.activeElement')) {
             throw new Error('Mission polling must pause while a user is editing a control');
           }
-          const otaBuild = html.match(/<meta\\s+name=["']pz-build["']\\s+content=["'](\\d+)["']/i);
+          const otaBuild = html.match(/name="pz-build" content="([0-9]+)"/i);
           if (!otaBuild || Number(otaBuild[1]) <= 202611271200) {
             throw new Error('Patrol OTA build marker must advance for existing 1.8.0 installs');
           }
