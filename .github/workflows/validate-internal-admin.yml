@@ -1,4 +1,5 @@
 name: Validate internal-admin approval flow
+# Dedicated runner-side validation for the canonical Pooyesh Zamin source.
 
 on:
   push:
