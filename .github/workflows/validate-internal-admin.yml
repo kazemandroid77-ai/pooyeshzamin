@@ -1,5 +1,5 @@
 name: Validate internal-admin approval flow
-# Dedicated runner-side validation for the canonical Pooyesh Zamin source, including per-IP admin-request throttling.
+# Dedicated runner-side validation for the canonical Pooyesh Zamin source, including failed-code attempt throttling.
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
       source_ref:
         description: "Branch, tag, or commit in ModernOutlook/pooyeshzamin"
         required: false
-        default: "feature/internal-admin-request-approval"
+        default: "fix/internal-admin-request-rate-limit-order"
         type: string
 
 permissions:
