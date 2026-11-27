@@ -188,6 +188,32 @@ jobs:
           }
           NODE
 
+      - name: Verify production release catalog and APK downloads
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="https://pooyeshzamin-api.pooyesh-zamin.workers.dev"
+          manifest="$(curl --fail --silent --show-error --max-time 30 "$base/api/releases/latest")"
+          tag="$(jq -r '.tag_name // empty' <<< "$manifest")"
+          [[ "$tag" == "v1.8.0" ]] || {
+            echo "Expected v1.8.0 from the production release catalog; received '${tag:-empty}'." >&2
+            exit 1
+          }
+          for role in admin patrol subscriber; do
+            name="pooyesh-$role-1.8.0.apk"
+            asset_id="$(jq -r --arg name "$name" '.assets[] | select(.name == $name) | .id' <<< "$manifest")"
+            [[ -n "$asset_id" && "$asset_id" != "null" ]] || {
+              echo "Production release catalog is missing $name." >&2
+              exit 1
+            }
+            status="$(curl --silent --show-error --max-time 90 -o /dev/null -w '%{http_code}' "$base/api/releases/download/$asset_id")"
+            [[ "$status" == "200" ]] || {
+              echo "Production APK download failed for $name (HTTP $status)." >&2
+              exit 1
+            }
+            echo "Verified production APK delivery: $name"
+          done
+
       - name: Upload validation diagnostics
         if: always()
         uses: actions/upload-artifact@v4
