@@ -12,7 +12,7 @@ on:
       source_sha:
         description: "Exact merged commit SHA from ModernOutlook/pooyeshzamin main"
         required: true
-        default: "b7a14c28a8514b175a8c9a8f8d42bf06ab15f5d2"
+        default: "5f503fbb024ccc87cbd8365347113cec6a0df421"
         type: string
 
 permissions:
