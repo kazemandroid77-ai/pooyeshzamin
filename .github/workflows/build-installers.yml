@@ -246,7 +246,7 @@ jobs:
           retention-days: 14
 
   bundle:
-    needs: [android, windows]
+    needs: [validate, android, windows]
     runs-on: ubuntu-24.04
     steps:
       - name: Download Android APKs
