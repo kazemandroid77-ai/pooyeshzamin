@@ -1,5 +1,6 @@
 name: Build PooyeshZamin installers
 # Build and publish all installer variants from the pinned canonical source.
+# Triggered on main workflow-file updates; release inputs default to the approved 1.8.4 source.
 
 run-name: Build Pooyesh Zamin ${{ inputs.version || '1.8.4' }} installers
 
