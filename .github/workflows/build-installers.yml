@@ -1,4 +1,5 @@
 name: Build PooyeshZamin installers
+# Build and publish all installer variants from the pinned canonical source.
 
 run-name: Build Pooyesh Zamin ${{ inputs.version || '1.8.0' }} installers
 
