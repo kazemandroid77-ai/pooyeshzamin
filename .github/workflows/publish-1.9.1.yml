@@ -1,0 +1,171 @@
+name: Publish Pooyesh Zamin 1.9.1 Release and verify OTA
+run-name: Publish Pooyesh Zamin v1.9.1 and verify Android OTA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-1.9.1.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: pooyeshzamin-publish-v1.9.1
+  cancel-in-progress: false
+
+jobs:
+  verify-and-publish:
+    name: Verify signed OTA and publish verified installers
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout workflow repository
+        uses: actions/checkout@v4
+
+      - name: Checkout exact canonical source used for the build
+        uses: actions/checkout@v4
+        with:
+          repository: ModernOutlook/pooyeshzamin
+          ref: 9087ba111fe22362ee815a844537c84ef862e97a
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          path: source
+          persist-credentials: false
+
+      - name: Download successful v1.9.1 build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: PooyeshZamin-1.9.1-Installers
+          path: release-bundle
+          repository: kazemandroid77-ai/pooyeshzamin
+          run-id: 46072881613
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate installer set and SHA-256 manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-bundle
+          for file in \
+            pooyesh-admin-1.9.1.apk \
+            pooyesh-patrol-1.9.1.apk \
+            pooyesh-subscriber-1.9.1.apk \
+            PooyeshZamin-Admin-Setup-1.9.1.exe \
+            PooyeshZamin-Admin-Setup-1.9.1.exe.blockmap \
+            latest.yml BUILD_INFO.txt SHA256SUMS.txt RELEASE_NOTES.md; do
+            test -s "$file" || { echo "Missing release asset: $file" >&2; exit 1; }
+          done
+          test "$(find . -maxdepth 1 -name '*.apk' | wc -l)" -eq 3
+          test "$(find . -maxdepth 1 -name '*.exe' | wc -l)" -eq 1
+          grep -Fq 'versionName=1.9.1' BUILD_INFO.txt
+          grep -Fq 'sourceCommit=9087ba111fe22362ee815a844537c84ef862e97a' BUILD_INFO.txt
+          grep -Fq 'version: 1.9.1' latest.yml
+          sha256sum --check SHA256SUMS.txt
+          echo "All four installers, Windows updater metadata and SHA-256 manifest verified."
+
+      - name: Verify live signed OTA bundles for all Android panels
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          const base = 'https://pooyeshzamin-api.pooyesh-zamin.workers.dev/api/android/ota?name=';
+          const sourceRoot = 'source/apps';
+          const runtime = fs.readFileSync('source/apps/shared/android-ota.js', 'utf8');
+          const match = runtime.match(/const PUBLIC_KEY = (\{[^;]+\});/);
+          if (!match) throw new Error('Embedded OTA verification key not found');
+          const jwk = JSON.parse(match[1]);
+          const publicKey = crypto.createPublicKey({ key: jwk, format: 'jwk' });
+          const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
+          const expectedFiles = {
+            admin: ['pz-experience-v160.js', 'shared/offline-sync.js'],
+            patrol: ['pz-experience-v160.js', 'shared/offline-sync.js'],
+            subscriber: ['assets/a.jpg', 'assets/b.jpg', 'pz-experience-v160.js', 'shared/offline-sync.js']
+          };
+          (async () => {
+            for (const app of ['admin', 'patrol', 'subscriber']) {
+              const htmlSource = fs.readFileSync(`${sourceRoot}/${app}/index.html`, 'utf8');
+              const expectedBuild = htmlSource.match(/<meta\s+name=["']pz-build["']\s+content=["']([^"']+)["']/i)?.[1];
+              if (!expectedBuild) throw new Error(`${app}: source build metadata missing`);
+              const response = await fetch(base + app, { cache: 'no-store' });
+              if (!response.ok) throw new Error(`${app}: live OTA endpoint returned HTTP ${response.status}`);
+              const envelope = await response.json();
+              if (typeof envelope.payload !== 'string' || typeof envelope.signature !== 'string') {
+                throw new Error(`${app}: malformed OTA envelope`);
+              }
+              const signature = Buffer.from(envelope.signature.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - envelope.signature.length % 4) % 4), 'base64');
+              const valid = crypto.verify('sha256', Buffer.from(envelope.payload), {
+                key: publicKey, dsaEncoding: 'ieee-p1363'
+              }, signature);
+              if (!valid) throw new Error(`${app}: OTA ECDSA signature is invalid`);
+              const etag = (response.headers.get('etag') || '').replace(/^W\//i, '').replaceAll('"', '');
+              if (etag !== sha256(envelope.payload)) throw new Error(`${app}: OTA ETag mismatch`);
+              const signed = JSON.parse(envelope.payload);
+              if (signed.schema !== 1 || signed.app !== app || signed.build !== expectedBuild) {
+                throw new Error(`${app}: OTA identity or source build mismatch`);
+              }
+              if (sha256(signed.html) !== signed.hashes?.html) throw new Error(`${app}: HTML hash mismatch`);
+              const actualFiles = Object.keys(signed.files || {}).sort();
+              if (actualFiles.join('\n') !== expectedFiles[app].slice().sort().join('\n')) {
+                throw new Error(`${app}: OTA file set mismatch`);
+              }
+              for (const [name, content] of Object.entries(signed.files)) {
+                if (typeof content !== 'string' || sha256(content) !== signed.hashes?.files?.[name]) {
+                  throw new Error(`${app}: file hash mismatch for ${name}`);
+                }
+              }
+              console.log(`PASS: ${app} OTA live, signed, hash-verified, build ${signed.build}`);
+            }
+          })().catch(error => { console.error(error); process.exitCode = 1; });
+          NODE
+
+      - name: Refuse duplicate v1.9.1 tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh api repos/kazemandroid77-ai/pooyeshzamin/git/ref/tags/v1.9.1 >/dev/null 2>&1; then
+            echo "Tag v1.9.1 already exists; refusing to overwrite a published release." >&2
+            exit 1
+          fi
+
+      - name: Publish v1.9.1 as the latest GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: kazemandroid77-ai/pooyeshzamin
+          tag_name: v1.9.1
+          name: Pooyesh Zamin v1.9.1
+          target_commitish: main
+          draft: false
+          prerelease: false
+          make_latest: true
+          body_path: release-bundle/RELEASE_NOTES.md
+          files: |
+            release-bundle/pooyesh-admin-1.9.1.apk
+            release-bundle/pooyesh-patrol-1.9.1.apk
+            release-bundle/pooyesh-subscriber-1.9.1.apk
+            release-bundle/PooyeshZamin-Admin-Setup-1.9.1.exe
+            release-bundle/PooyeshZamin-Admin-Setup-1.9.1.exe.blockmap
+            release-bundle/latest.yml
+            release-bundle/BUILD_INFO.txt
+            release-bundle/SHA256SUMS.txt
+          fail_on_unmatched_files: true
+
+      - name: Verify published release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release view v1.9.1 --repo kazemandroid77-ai/pooyeshzamin --json isDraft,isPrerelease,isLatest,assets --jq '
+            if .isDraft == false and .isPrerelease == false and .isLatest == true and
+              ([.assets[].name] | index("pooyesh-admin-1.9.1.apk")) and
+              ([.assets[].name] | index("pooyesh-patrol-1.9.1.apk")) and
+              ([.assets[].name] | index("pooyesh-subscriber-1.9.1.apk")) and
+              ([.assets[].name] | index("PooyeshZamin-Admin-Setup-1.9.1.exe")) and
+              ([.assets[].name] | index("latest.yml")) and
+              ([.assets[].name] | index("SHA256SUMS.txt"))
+            then "PASS: v1.9.1 published as Latest with required assets"
+            else error("Release verification failed")
+            end'
