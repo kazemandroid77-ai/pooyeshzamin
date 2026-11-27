@@ -183,6 +183,41 @@ jobs:
           done
           bash source/scripts/release/build-android.sh "$GITHUB_WORKSPACE/source" "$VERSION" "$GITHUB_WORKSPACE/android-output" "$RUNNER_TEMP/signing/pooyeshzamin-release.jks"
 
+      - name: Verify Android APK metadata, release signature and OTA compatibility
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version || '1.8.3' }}
+          VERSION_CODE: ${{ needs.validate.outputs.version_code }}
+        run: |
+          set -euo pipefail
+          AAPT="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          SIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -x "$AAPT" && test -x "$SIGNER"
+          test "$(find android-output -maxdepth 1 -type f -name '*.apk' | wc -l)" -eq 3
+
+          for app in admin patrol subscriber; do
+            apk="android-output/pooyesh-$app-$VERSION.apk"
+            test -s "$apk"
+            badging="$("$AAPT" dump badging "$apk")"
+            grep -Fq "name='com.modernoutlook.pooyeshzamin.$app'" <<< "$badging"
+            grep -Fq "versionCode='$VERSION_CODE'" <<< "$badging"
+            grep -Fq "versionName='$VERSION'" <<< "$badging"
+
+            verify="$("$SIGNER" verify --print-certs "$apk" 2>&1)"
+            cert="$(sed -nE 's/.*certificate SHA-256 digest: ([[:xdigit:]]+).*/\1/p' <<< "$verify" | head -n 1 | tr '[:lower:]' '[:upper:]')"
+            [[ "$cert" == "86F196E7E3445F064E71A58E3C9260053C1415A4A31B3EFF38448E385E2B5FFE" ]] || {
+              echo "Unexpected release signing certificate for $app: $cert" >&2
+              exit 1
+            }
+
+            unzip -p "$apk" assets/public/shared/android-ota.js > "$RUNNER_TEMP/$app-ota.js"
+            grep -Fq "checkForUpdates" "$RUNNER_TEMP/$app-ota.js"
+            grep -Fq "/api/android/ota" "$RUNNER_TEMP/$app-ota.js"
+            unzip -p "$apk" assets/public/shared/android-update-manager.js > "$RUNNER_TEMP/$app-update-manager.js"
+            grep -Fq "/api/releases/latest" "$RUNNER_TEMP/$app-update-manager.js"
+            echo "PASS: $app version metadata, release signature and OTA bootstrap."
+          done
+
       - name: Upload Android APKs
         uses: actions/upload-artifact@v4
         with:
