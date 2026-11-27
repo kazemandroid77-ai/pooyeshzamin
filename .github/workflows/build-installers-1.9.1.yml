@@ -51,6 +51,8 @@ jobs:
         with:
           repository: ModernOutlook/pooyeshzamin
           ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          persist-credentials: true
           path: source
           fetch-depth: 0
 
@@ -108,6 +110,8 @@ jobs:
         with:
           repository: ModernOutlook/pooyeshzamin
           ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          persist-credentials: true
           path: source
 
       - name: Set up Node.js 24
@@ -215,6 +219,8 @@ jobs:
         with:
           repository: ModernOutlook/pooyeshzamin
           ref: ${{ env.SOURCE_SHA }}
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          persist-credentials: true
           path: source
 
       - name: Set up Node.js 24
