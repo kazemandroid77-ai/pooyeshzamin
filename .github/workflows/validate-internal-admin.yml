@@ -27,7 +27,7 @@ jobs:
         with:
           repository: ModernOutlook/pooyeshzamin
           token: ${{ secrets.SOURCE_REPO_TOKEN }}
-          ref: ${{ inputs.source_ref || 'feature/internal-admin-request-approval' }}
+          ref: ${{ inputs.source_ref || 'fix/internal-admin-request-rate-limit-order' }}
           path: source
           fetch-depth: 0
 
