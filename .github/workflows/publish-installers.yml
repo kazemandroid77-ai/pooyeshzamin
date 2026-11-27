@@ -134,7 +134,7 @@ jobs:
           grep -Fxq "versionName=$version" BUILD_INFO.txt
           grep -Eq '^versionCode=[1-9][0-9]*$' BUILD_INFO.txt
           grep -Eq '^sourceCommit=[0-9a-f]{40}$' BUILD_INFO.txt
-          grep -Eq "^version: *['\\"]?$version([ '\\"]|$)" latest.yml || {
+          grep -Fxq "version: $version" latest.yml || {
             echo "latest.yml version does not match installer version $version." >&2
             exit 1
           }
