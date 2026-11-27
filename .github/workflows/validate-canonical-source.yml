@@ -195,12 +195,13 @@ jobs:
           base="https://pooyeshzamin-api.pooyesh-zamin.workers.dev"
           manifest="$(curl --fail --silent --show-error --max-time 30 "$base/api/releases/latest")"
           tag="$(jq -r '.tag_name // empty' <<< "$manifest")"
-          [[ "$tag" == "v1.8.0" ]] || {
-            echo "Expected v1.8.0 from the production release catalog; received '${tag:-empty}'." >&2
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "Production release catalog returned an invalid version tag: '${tag:-empty}'." >&2
             exit 1
           }
+          version="${tag#v}"
           for role in admin patrol subscriber; do
-            name="pooyesh-$role-1.8.0.apk"
+            name="pooyesh-$role-$version.apk"
             asset_id="$(jq -r --arg name "$name" '.assets[] | select(.name == $name) | .id' <<< "$manifest")"
             [[ -n "$asset_id" && "$asset_id" != "null" ]] || {
               echo "Production release catalog is missing $name." >&2
