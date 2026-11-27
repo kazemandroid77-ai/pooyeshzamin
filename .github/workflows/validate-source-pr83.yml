@@ -1,0 +1,60 @@
+name: Validate ModernOutlook PooyeshZamin PR 83
+
+on:
+  push:
+    branches:
+      - validate/source-pr-83
+    paths:
+      - ".github/workflows/validate-source-pr83.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-source:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout canonical source PR 83
+        uses: actions/checkout@v4
+        with:
+          repository: ModernOutlook/pooyeshzamin
+          ref: refs/pull/83/head
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          path: source
+          fetch-depth: 0
+
+      - name: Verify the exact source revision
+        working-directory: source
+        run: |
+          set -euo pipefail
+          echo "Validating ModernOutlook/pooyeshzamin PR 83 at $(git rev-parse HEAD)"
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Run complete regression suite
+        working-directory: source
+        run: npm test
+
+      - name: Validate all application panels
+        working-directory: source
+        run: node scripts/validate-apps.mjs
+
+      - name: Check Cloudflare and platform module syntax
+        working-directory: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in \
+            cloudflare/worker.js \
+            cloudflare/processor.js \
+            cloudflare/realtime.js \
+            cloudflare/partitioning.js \
+            cloudflare/partitioned-store.js \
+            platform/coordinator.js \
+            platform/core.mjs; do
+            node --check "$file"
+          done
