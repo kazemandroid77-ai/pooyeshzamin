@@ -5,6 +5,13 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/validate-internal-admin-device-recovery.yml"
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: "Branch, tag, or commit in ModernOutlook/pooyeshzamin"
+        required: false
+        default: "main"
+        type: string
 
 permissions:
   contents: read
@@ -19,7 +26,7 @@ jobs:
         with:
           repository: ModernOutlook/pooyeshzamin
           token: ${{ secrets.SOURCE_REPO_TOKEN }}
-          ref: feature/internal-admin-device-recovery
+          ref: ${{ inputs.source_ref || 'main' }}
           path: source
           fetch-depth: 0
 
