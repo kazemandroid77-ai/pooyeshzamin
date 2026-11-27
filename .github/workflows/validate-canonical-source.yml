@@ -10,7 +10,7 @@ on:
       source_ref:
         description: "Branch, tag, or exact commit in ModernOutlook/pooyeshzamin"
         required: true
-        default: "feat/android-web-ota-standalone-apks"
+        default: "main"
 
 permissions:
   contents: read
@@ -37,7 +37,7 @@ jobs:
         with:
           repository: ModernOutlook/pooyeshzamin
           token: ${{ secrets.SOURCE_REPO_TOKEN }}
-          ref: ${{ inputs.source_ref || 'feat/android-web-ota-standalone-apks' }}
+          ref: ${{ inputs.source_ref || 'main' }}
           path: source
           fetch-depth: 0
 
@@ -50,7 +50,7 @@ jobs:
           echo "sha=$SOURCE_SHA" >> "$GITHUB_OUTPUT"
           {
             echo "sourceRepository=ModernOutlook/pooyeshzamin"
-            echo "sourceRef=${{ inputs.source_ref || 'feat/android-web-ota-standalone-apks' }}"
+            echo "sourceRef=${{ inputs.source_ref || 'main' }}"
             echo "sourceCommit=$SOURCE_SHA"
           } | tee source-revision.txt
 
