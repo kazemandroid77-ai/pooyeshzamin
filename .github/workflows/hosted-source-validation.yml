@@ -1,4 +1,5 @@
 name: Hosted source validation
+# Security regression scope: HTML archive rendering, bounded archive retention, command payload caps and per-account request windows.
 
 on:
   push:
