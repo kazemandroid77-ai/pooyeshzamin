@@ -14,7 +14,7 @@ on:
       source_sha:
         description: "Exact merged commit SHA reachable from ModernOutlook/pooyeshzamin main"
         required: true
-        default: "b7a14c28a8514b175a8c9a8f8d42bf06ab15f5d2"
+        default: "5f503fbb024ccc87cbd8365347113cec6a0df421"
         type: string
 
 permissions:
@@ -32,7 +32,7 @@ jobs:
     steps:
       - name: Validate pinned source SHA
         env:
-          SOURCE_SHA: ${{ inputs.source_sha || 'b7a14c28a8514b175a8c9a8f8d42bf06ab15f5d2' }}
+          SOURCE_SHA: ${{ inputs.source_sha || '5f503fbb024ccc87cbd8365347113cec6a0df421' }}
         run: |
           set -euo pipefail
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
@@ -44,7 +44,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ModernOutlook/pooyeshzamin
-          ref: ${{ inputs.source_sha || 'b7a14c28a8514b175a8c9a8f8d42bf06ab15f5d2' }}
+          ref: ${{ inputs.source_sha || '5f503fbb024ccc87cbd8365347113cec6a0df421' }}
           token: ${{ secrets.SOURCE_REPO_TOKEN }}
           path: source
           fetch-depth: 0
@@ -73,7 +73,7 @@ jobs:
         id: version
         env:
           VERSION: ${{ inputs.version || '1.8.3' }}
-          SOURCE_SHA: ${{ inputs.source_sha || 'b7a14c28a8514b175a8c9a8f8d42bf06ab15f5d2' }}
+          SOURCE_SHA: ${{ inputs.source_sha || '5f503fbb024ccc87cbd8365347113cec6a0df421' }}
         run: |
           set -euo pipefail
           ACTUAL_SHA="$(git -C source rev-parse HEAD)"
@@ -98,13 +98,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ModernOutlook/pooyeshzamin
-          ref: ${{ inputs.source_sha || 'b7a14c28a8514b175a8c9a8f8d42bf06ab15f5d2' }}
+          ref: ${{ inputs.source_sha || '5f503fbb024ccc87cbd8365347113cec6a0df421' }}
           token: ${{ secrets.SOURCE_REPO_TOKEN }}
           path: source
 
       - name: Verify canonical source SHA
         env:
-          SOURCE_SHA: ${{ inputs.source_sha || 'b7a14c28a8514b175a8c9a8f8d42bf06ab15f5d2' }}
+          SOURCE_SHA: ${{ inputs.source_sha || '5f503fbb024ccc87cbd8365347113cec6a0df421' }}
         run: |
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
@@ -234,14 +234,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ModernOutlook/pooyeshzamin
-          ref: ${{ inputs.source_sha || 'b7a14c28a8514b175a8c9a8f8d42bf06ab15f5d2' }}
+          ref: ${{ inputs.source_sha || '5f503fbb024ccc87cbd8365347113cec6a0df421' }}
           token: ${{ secrets.SOURCE_REPO_TOKEN }}
           path: source
 
       - name: Verify canonical source SHA
         shell: pwsh
         env:
-          SOURCE_SHA: ${{ inputs.source_sha || 'b7a14c28a8514b175a8c9a8f8d42bf06ab15f5d2' }}
+          SOURCE_SHA: ${{ inputs.source_sha || '5f503fbb024ccc87cbd8365347113cec6a0df421' }}
         run: |
           $actual = (git -C source rev-parse HEAD).Trim()
           if ($actual -ne $env:SOURCE_SHA) { throw "Canonical source checkout SHA mismatch: $actual" }
@@ -319,7 +319,7 @@ jobs:
         env:
           VERSION: ${{ inputs.version || '1.8.3' }}
           VERSION_CODE: ${{ needs.validate.outputs.version_code }}
-          SOURCE_SHA: ${{ inputs.source_sha || 'b7a14c28a8514b175a8c9a8f8d42bf06ab15f5d2' }}
+          SOURCE_SHA: ${{ inputs.source_sha || '5f503fbb024ccc87cbd8365347113cec6a0df421' }}
           WORKFLOW_RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
