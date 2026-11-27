@@ -1,4 +1,5 @@
 name: Validate canonical Android OTA source
+# Validate production OTA payloads after the Insight Novin content migration.
 
 on:
   push:
