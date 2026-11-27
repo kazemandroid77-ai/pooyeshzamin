@@ -1,4 +1,5 @@
 name: Hosted source validation
+# Triggered to validate the matching source branch in ModernOutlook/pooyeshzamin.
 
 on:
   push:
