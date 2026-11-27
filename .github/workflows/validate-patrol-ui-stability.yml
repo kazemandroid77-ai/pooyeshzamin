@@ -74,5 +74,9 @@ jobs:
           if (!timer.includes('document.activeElement')) {
             throw new Error('Mission polling must pause while a user is editing a control');
           }
-          console.log('Patrol stable-render, single-flight polling and stray-text guards passed.');
+          const otaBuild = html.match(/<meta\\s+name=["']pz-build["']\\s+content=["'](\\d+)["']/i);
+          if (!otaBuild || Number(otaBuild[1]) <= 202611271200) {
+            throw new Error('Patrol OTA build marker must advance for existing 1.8.0 installs');
+          }
+          console.log('Patrol stable-render, single-flight polling, OTA version and stray-text guards passed.');
           NODE
