@@ -1,5 +1,5 @@
 name: Hosted source validation
-# This workflow runs full regression, app, and syntax validation for the matching source branch.
+# This workflow validates the latest matching source commit, including app and backend regressions.
 
 on:
   push:
