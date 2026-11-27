@@ -1,4 +1,5 @@
 name: Hosted source validation
+# This workflow validates matching source branches in ModernOutlook/pooyeshzamin.
 
 on:
   push:
