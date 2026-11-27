@@ -1,8 +1,8 @@
 name: Build PooyeshZamin installers
 # Build and publish all installer variants from the pinned canonical source.
-# Triggered on main workflow-file updates; release inputs default to the approved 1.8.4 source.
+# Triggered on main workflow-file updates; release inputs default to the approved 1.9.0 source.
 
-run-name: Build Pooyesh Zamin ${{ inputs.version || '1.8.4' }} installers
+run-name: Build Pooyesh Zamin ${{ inputs.version || '1.9.0' }} installers
 
 on:
   push:
@@ -13,21 +13,21 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version in MAJOR.MINOR.PATCH format (for example 1.8.4)"
+        description: "Release version in MAJOR.MINOR.PATCH format (for example 1.9.0)"
         required: true
-        default: "1.8.4"
+        default: "1.9.0"
         type: string
       source_sha:
         description: "Exact merged commit SHA reachable from ModernOutlook/pooyeshzamin main"
         required: true
-        default: "611e8d9bb74148df39e75c53fd41b3b33b58a273"
+        default: "9f1c2196da22684c21871314c7b39573fecbb626"
         type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: pooyeshzamin-installers-${{ inputs.version || '1.8.4' }}
+  group: pooyeshzamin-installers-${{ inputs.version || '1.9.0' }}
   cancel-in-progress: false
 
 jobs:
@@ -38,7 +38,7 @@ jobs:
     steps:
       - name: Validate pinned source SHA
         env:
-          SOURCE_SHA: ${{ inputs.source_sha || '611e8d9bb74148df39e75c53fd41b3b33b58a273' }}
+          SOURCE_SHA: ${{ inputs.source_sha || '9f1c2196da22684c21871314c7b39573fecbb626' }}
         run: |
           set -euo pipefail
           [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ModernOutlook/pooyeshzamin
-          ref: ${{ inputs.source_sha || '611e8d9bb74148df39e75c53fd41b3b33b58a273' }}
+          ref: ${{ inputs.source_sha || '9f1c2196da22684c21871314c7b39573fecbb626' }}
           token: ${{ secrets.SOURCE_REPO_TOKEN }}
           path: source
           fetch-depth: 0
@@ -78,8 +78,8 @@ jobs:
       - name: Validate release version and calculate Android versionCode
         id: version
         env:
-          VERSION: ${{ inputs.version || '1.8.4' }}
-          SOURCE_SHA: ${{ inputs.source_sha || '611e8d9bb74148df39e75c53fd41b3b33b58a273' }}
+          VERSION: ${{ inputs.version || '1.9.0' }}
+          SOURCE_SHA: ${{ inputs.source_sha || '9f1c2196da22684c21871314c7b39573fecbb626' }}
         run: |
           set -euo pipefail
           ACTUAL_SHA="$(git -C source rev-parse HEAD)"
@@ -104,13 +104,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ModernOutlook/pooyeshzamin
-          ref: ${{ inputs.source_sha || '611e8d9bb74148df39e75c53fd41b3b33b58a273' }}
+          ref: ${{ inputs.source_sha || '9f1c2196da22684c21871314c7b39573fecbb626' }}
           token: ${{ secrets.SOURCE_REPO_TOKEN }}
           path: source
 
       - name: Verify canonical source SHA
         env:
-          SOURCE_SHA: ${{ inputs.source_sha || '611e8d9bb74148df39e75c53fd41b3b33b58a273' }}
+          SOURCE_SHA: ${{ inputs.source_sha || '9f1c2196da22684c21871314c7b39573fecbb626' }}
         run: |
           set -euo pipefail
           test "$(git -C source rev-parse HEAD)" = "$SOURCE_SHA"
@@ -178,7 +178,7 @@ jobs:
       - name: Build all Android panels
         shell: bash
         env:
-          VERSION: ${{ inputs.version || '1.8.4' }}
+          VERSION: ${{ inputs.version || '1.9.0' }}
           PZ_STORE_PASSWORD: ${{ secrets.APK_KEYSTORE_PASSWORD }}
           PZ_KEY_ALIAS: ${{ secrets.APK_KEY_ALIAS }}
           PZ_KEY_PASSWORD: ${{ secrets.APK_KEY_PASSWORD }}
@@ -192,7 +192,7 @@ jobs:
       - name: Verify Android APK metadata, release signature and OTA compatibility
         shell: bash
         env:
-          VERSION: ${{ inputs.version || '1.8.4' }}
+          VERSION: ${{ inputs.version || '1.9.0' }}
           VERSION_CODE: ${{ needs.validate.outputs.version_code }}
         run: |
           set -euo pipefail
@@ -240,14 +240,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: ModernOutlook/pooyeshzamin
-          ref: ${{ inputs.source_sha || '611e8d9bb74148df39e75c53fd41b3b33b58a273' }}
+          ref: ${{ inputs.source_sha || '9f1c2196da22684c21871314c7b39573fecbb626' }}
           token: ${{ secrets.SOURCE_REPO_TOKEN }}
           path: source
 
       - name: Verify canonical source SHA
         shell: pwsh
         env:
-          SOURCE_SHA: ${{ inputs.source_sha || '611e8d9bb74148df39e75c53fd41b3b33b58a273' }}
+          SOURCE_SHA: ${{ inputs.source_sha || '9f1c2196da22684c21871314c7b39573fecbb626' }}
         run: |
           $actual = (git -C source rev-parse HEAD).Trim()
           if ($actual -ne $env:SOURCE_SHA) { throw "Canonical source checkout SHA mismatch: $actual" }
@@ -265,7 +265,7 @@ jobs:
       - name: Build self-contained Windows installer
         shell: pwsh
         env:
-          VERSION: ${{ inputs.version || '1.8.4' }}
+          VERSION: ${{ inputs.version || '1.9.0' }}
         run: |
           $ErrorActionPreference = 'Stop'
           $code = python source/scripts/release/version-code.py $env:VERSION
@@ -323,9 +323,9 @@ jobs:
       - name: Validate and checksum all four installers
         shell: bash
         env:
-          VERSION: ${{ inputs.version || '1.8.4' }}
+          VERSION: ${{ inputs.version || '1.9.0' }}
           VERSION_CODE: ${{ needs.validate.outputs.version_code }}
-          SOURCE_SHA: ${{ inputs.source_sha || '611e8d9bb74148df39e75c53fd41b3b33b58a273' }}
+          SOURCE_SHA: ${{ inputs.source_sha || '9f1c2196da22684c21871314c7b39573fecbb626' }}
           WORKFLOW_RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -363,7 +363,7 @@ jobs:
       - name: Upload complete four-installer bundle
         uses: actions/upload-artifact@v4
         with:
-          name: PooyeshZamin-${{ inputs.version || '1.8.4' }}-Installers
+          name: PooyeshZamin-${{ inputs.version || '1.9.0' }}-Installers
           path: bundle/*
           if-no-files-found: error
           retention-days: 14
