@@ -122,17 +122,21 @@ jobs:
           })().catch(error => { console.error(error); process.exitCode = 1; });
           NODE
 
-      - name: Refuse duplicate v1.9.1 tag
+      - name: Detect an existing v1.9.1 release
+        id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          if gh api repos/kazemandroid77-ai/pooyeshzamin/git/ref/tags/v1.9.1 >/dev/null 2>&1; then
-            echo "Tag v1.9.1 already exists; refusing to overwrite a published release." >&2
-            exit 1
+          if gh api repos/kazemandroid77-ai/pooyeshzamin/releases/tags/v1.9.1 >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release v1.9.1 already exists; verification will run without replacing assets."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Publish v1.9.1 as the latest GitHub Release
+        if: steps.release.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
           repository: kazemandroid77-ai/pooyeshzamin
@@ -154,19 +158,23 @@ jobs:
             release-bundle/SHA256SUMS.txt
           fail_on_unmatched_files: true
 
-      - name: Verify published release assets
+      - name: Verify published release assets and Latest pointer
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          gh release view v1.9.1 --repo kazemandroid77-ai/pooyeshzamin --json isDraft,isPrerelease,isLatest,assets --jq '
-            if .isDraft == false and .isPrerelease == false and .isLatest == true and
-              ([.assets[].name] | index("pooyesh-admin-1.9.1.apk")) and
-              ([.assets[].name] | index("pooyesh-patrol-1.9.1.apk")) and
-              ([.assets[].name] | index("pooyesh-subscriber-1.9.1.apk")) and
-              ([.assets[].name] | index("PooyeshZamin-Admin-Setup-1.9.1.exe")) and
-              ([.assets[].name] | index("latest.yml")) and
-              ([.assets[].name] | index("SHA256SUMS.txt"))
-            then "PASS: v1.9.1 published as Latest with required assets"
-            else error("Release verification failed")
-            end'
+          release="$(gh api repos/kazemandroid77-ai/pooyeshzamin/releases/tags/v1.9.1)"
+          test "$(jq -r '.draft' <<< "$release")" = "false"
+          test "$(jq -r '.prerelease' <<< "$release")" = "false"
+          for asset in \
+            pooyesh-admin-1.9.1.apk \
+            pooyesh-patrol-1.9.1.apk \
+            pooyesh-subscriber-1.9.1.apk \
+            PooyeshZamin-Admin-Setup-1.9.1.exe \
+            PooyeshZamin-Admin-Setup-1.9.1.exe.blockmap \
+            latest.yml BUILD_INFO.txt SHA256SUMS.txt; do
+            jq -e --arg name "$asset" 'any(.assets[]; .name == $name and .state == "uploaded")' <<< "$release" >/dev/null
+          done
+          latest="$(gh api repos/kazemandroid77-ai/pooyeshzamin/releases/latest --jq '.tag_name')"
+          test "$latest" = "v1.9.1"
+          echo "PASS: v1.9.1 is published, all required assets are uploaded, and GitHub Latest points to v1.9.1."
