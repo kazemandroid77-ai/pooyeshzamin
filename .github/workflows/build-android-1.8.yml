@@ -1,4 +1,4 @@
-name: Build PooyeshZamin Android 1.8
+name: Build PooyeshZamin Android 1.8.2
 run-name: Build PooyeshZamin Android ${{ inputs.version }} from canonical source
 
 on:
@@ -7,12 +7,12 @@ on:
       version:
         description: "Android release version (MAJOR.MINOR.PATCH)"
         required: true
-        default: "1.8.0"
+        default: "1.8.2"
         type: string
       source_sha:
         description: "Exact merged commit SHA from ModernOutlook/pooyeshzamin main"
         required: true
-        default: "bf5b0be86663f786f327cf26c5de090c0f5bf4c3"
+        default: "dafd034a43977ac13bc00f7efcaee15a958bfc6a"
         type: string
 
 permissions:
@@ -88,9 +88,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: pooyesh-android-1.8-${{ runner.os }}-${{ hashFiles('source/scripts/release/build-android.sh', 'source/scripts/android-location-bridge.js') }}
+          key: pooyesh-android-1.8.2-${{ runner.os }}-${{ hashFiles('source/scripts/release/build-android.sh', 'source/scripts/android-location-bridge.js') }}
           restore-keys: |
-            pooyesh-android-1.8-${{ runner.os }}-
+            pooyesh-android-1.8.2-${{ runner.os }}-
 
       - name: Configure Android SDK
         shell: bash
@@ -122,8 +122,8 @@ jobs:
         run: |
           set -euo pipefail
           VERSION_CODE="$(python3 scripts/release/version-code.py "$VERSION")"
-          [[ "$VERSION_CODE" == "1008000" && "$VERSION" == "1.8.0" ]] || {
-            echo "This workflow is reserved for Android 1.8.0 (versionCode 1008000)." >&2
+          [[ "$VERSION_CODE" == "1008002" && "$VERSION" == "1.8.2" ]] || {
+            echo "This workflow is reserved for Android 1.8.2 (versionCode 1008002)." >&2
             exit 1
           }
           node scripts/validate-apps.mjs
@@ -185,7 +185,7 @@ jobs:
             test -s "$apk"
             badging="$("$AAPT" dump badging "$apk")"
             grep -Fq "name='com.modernoutlook.pooyeshzamin.$app'" <<< "$badging"
-            grep -Fq "versionCode='1008000'" <<< "$badging"
+            grep -Fq "versionCode='1008002'" <<< "$badging"
             grep -Fq "versionName='$VERSION'" <<< "$badging"
 
             permissions="$("$AAPT" dump permissions "$apk")"
@@ -225,7 +225,7 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
-          VERSION_CODE: "1008000"
+          VERSION_CODE: "1008002"
         run: |
           set -euo pipefail
           mkdir -p bundle
