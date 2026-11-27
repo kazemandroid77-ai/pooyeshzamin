@@ -74,9 +74,10 @@ jobs:
           const base = 'https://pooyeshzamin-api.pooyesh-zamin.workers.dev/api/android/ota?name=';
           const sourceRoot = 'source/apps';
           const runtime = fs.readFileSync('source/apps/shared/android-ota.js', 'utf8');
-          const match = runtime.match(/const PUBLIC_KEY = (\{[^;]+\});/);
-          if (!match) throw new Error('Embedded OTA verification key not found');
-          const jwk = JSON.parse(match[1]);
+          const x = runtime.match(/\\bx:\\s*"([^"]+)"/)?.[1];
+          const y = runtime.match(/\\by:\\s*"([^"]+)"/)?.[1];
+          if (!x || !y) throw new Error('Embedded OTA verification key not found');
+          const jwk = { kty: 'EC', crv: 'P-256', x, y, ext: true };
           const publicKey = crypto.createPublicKey({ key: jwk, format: 'jwk' });
           const sha256 = value => crypto.createHash('sha256').update(value).digest('hex');
           const expectedFiles = {
