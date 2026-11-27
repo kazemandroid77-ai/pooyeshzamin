@@ -1,0 +1,71 @@
+name: Validate patrol UI stability
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/validate-patrol-ui-stability.yml"
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: "Branch, tag, or commit in ModernOutlook/pooyeshzamin"
+        required: false
+        default: "fix/patrol-ui-stability-and-literal-newline"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out canonical Pooyesh Zamin source
+        uses: actions/checkout@v4
+        with:
+          repository: ModernOutlook/pooyeshzamin
+          token: ${{ secrets.SOURCE_REPO_TOKEN }}
+          ref: ${{ inputs.source_ref || 'fix/patrol-ui-stability-and-literal-newline' }}
+          path: source
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Run complete regression suite
+        working-directory: source
+        run: npm test
+
+      - name: Validate application HTML and embedded JavaScript
+        working-directory: source
+        run: node scripts/validate-apps.mjs
+
+      - name: Verify patrol UI stability and HTML whitespace
+        working-directory: source
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import vm from 'node:vm';
+          const html = fs.readFileSync('apps/patrol/index.html', 'utf8');
+          if (html.includes('</style>\\\\n<style id="pz-patrol-gps-switch">')) {
+            throw new Error('Literal \\n remains between patrol style blocks');
+          }
+          if (html.includes('</style>\\\\n</head>')) {
+            throw new Error('Literal \\n remains before the document head closes');
+          }
+          for (const match of html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)) {
+            const source = match[1].trim();
+            if (!source || source.includes('src=')) continue;
+            new vm.Script(source, { filename: 'apps/patrol/index.html:inline-script' });
+          }
+          if (!html.includes('function shell(tabs,preserve=false)')) {
+            throw new Error('Preserving shell render mode is missing');
+          }
+          if (!html.includes('view.innerHTML!==nextView')) {
+            throw new Error('No-op view render guard is missing');
+          }
+          console.log('Patrol inline scripts parse; stable-render and stray-text guards passed.');
+          NODE
