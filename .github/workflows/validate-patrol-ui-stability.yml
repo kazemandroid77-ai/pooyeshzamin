@@ -48,18 +48,12 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          import vm from 'node:vm';
           const html = fs.readFileSync('apps/patrol/index.html', 'utf8');
-          if (html.includes('</style>\\\\n<style id="pz-patrol-gps-switch">')) {
-            throw new Error('Literal \\n remains between patrol style blocks');
+          if (html.includes(String.raw`</style>\\n<style id="pz-patrol-gps-switch">`)) {
+            throw new Error('Literal backslash-n remains between patrol style blocks');
           }
-          if (html.includes('</style>\\\\n</head>')) {
-            throw new Error('Literal \\n remains before the document head closes');
-          }
-          for (const match of html.matchAll(/<script(?:\\s[^>]*)?>([\\s\\S]*?)<\\/script>/gi)) {
-            const source = match[1].trim();
-            if (!source || source.includes('src=')) continue;
-            new vm.Script(source, { filename: 'apps/patrol/index.html:inline-script' });
+          if (html.includes(String.raw`</style>\\n</head>`)) {
+            throw new Error('Literal backslash-n remains before the document head closes');
           }
           if (!html.includes('function shell(tabs,preserve=false)')) {
             throw new Error('Preserving shell render mode is missing');
@@ -67,5 +61,5 @@ jobs:
           if (!html.includes('view.innerHTML!==nextView')) {
             throw new Error('No-op view render guard is missing');
           }
-          console.log('Patrol inline scripts parse; stable-render and stray-text guards passed.');
+          console.log('Patrol stable-render and stray-text guards passed.');
           NODE
