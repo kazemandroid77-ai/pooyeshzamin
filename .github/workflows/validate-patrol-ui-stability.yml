@@ -49,10 +49,11 @@ jobs:
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           const html = fs.readFileSync('apps/patrol/index.html', 'utf8');
-          if (html.includes(String.raw`</style>\\n<style id="pz-patrol-gps-switch">`)) {
+          const literalNewline = String.fromCharCode(92) + 'n';
+          if (html.includes('</style>' + literalNewline + '<style id="pz-patrol-gps-switch">')) {
             throw new Error('Literal backslash-n remains between patrol style blocks');
           }
-          if (html.includes(String.raw`</style>\\n</head>`)) {
+          if (html.includes('</style>' + literalNewline + '</head>')) {
             throw new Error('Literal backslash-n remains before the document head closes');
           }
           if (!html.includes('function shell(tabs,preserve=false)')) {
