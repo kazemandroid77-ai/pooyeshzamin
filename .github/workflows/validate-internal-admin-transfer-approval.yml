@@ -32,7 +32,7 @@ jobs:
 
       - name: Record source revision
         working-directory: source
-        run: echo "Validating ModernOutlook/pooyeshzamin@$(git rev-parse HEAD)"
+        run: echo "Validating approval-based internal-admin device transfer at ModernOutlook/pooyeshzamin@$(git rev-parse HEAD)"
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
