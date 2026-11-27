@@ -1,5 +1,7 @@
 name: Hosted source validation
 
+# On a matching work branch, validate the same-named canonical source branch.
+
 on:
   push:
     branches:
